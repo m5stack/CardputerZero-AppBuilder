@@ -75,7 +75,7 @@ export default function DockerSetup({ onStatusChange }: Props) {
         cmd.stderr.on("data", (d) => { lastLine = d.trim(); setMessage(lastLine); });
 
         const result = await new Promise<number>((resolve) => {
-          cmd.on("close", (r) => resolve(r.code));
+          cmd.on("close", (r) => resolve(r.code ?? 1));
           cmd.on("error", () => resolve(1));
           cmd.spawn();
         });
