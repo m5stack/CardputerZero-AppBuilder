@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "M5Stack AppBuilder",
+  "productName": "CardputerZero AppBuilder",
   "version": "0.1.0",
-  "identifier": "com.m5stack.appbuilder",
+  "identifier": "com.m5stack.cardputerzero-appbuilder",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "M5Stack AppBuilder",
+        "title": "CardputerZero AppBuilder",
         "width": 1200,
         "height": 800,
         "resizable": true,

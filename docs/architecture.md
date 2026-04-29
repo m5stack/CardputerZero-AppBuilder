@@ -1,4 +1,4 @@
-# M5Stack AppBuilder — Desktop IDE Architecture
+# CardputerZero AppBuilder — Desktop IDE Architecture
 
 ## Overview
 
@@ -105,7 +105,7 @@ Tauri 2 desktop app (Rust backend + TypeScript/React frontend) for building, deb
 ## Directory Structure
 
 ```
-M5Stack-AppBuilder/
+CardputerZero-AppBuilder/
 ├── src-tauri/              # Rust backend
 │   ├── src/
 │   │   ├── main.rs         # Tauri entry point

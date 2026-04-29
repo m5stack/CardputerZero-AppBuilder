@@ -1,4 +1,4 @@
-# M5Stack AppBuilder
+# CardputerZero AppBuilder
 
 Online build system for [M5CardputerZero](https://docs.m5stack.com/) applications. Submit any public Git repository and get a ready-to-install `.deb` package — no local toolchain required.
 
@@ -77,7 +77,7 @@ Generated packages follow the [APPLaunch packaging conventions](https://github.c
 
 ## Future: Desktop IDE
 
-M5Stack AppBuilder is planned to become a cross-platform desktop IDE (Windows, macOS, Linux) for building M5CardputerZero applications locally — a visual scaffold for beginners and hobbyists to create, build, and deploy apps to their devices.
+CardputerZero AppBuilder is planned to become a cross-platform desktop IDE (Windows, macOS, Linux) for building M5CardputerZero applications locally — a visual scaffold for beginners and hobbyists to create, build, and deploy apps to their devices.
 
 ## Related Projects
 
