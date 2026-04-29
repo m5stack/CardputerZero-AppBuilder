@@ -1,0 +1,33 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        { "name": "scons", "cmd": "scons", "args": true },
+        { "name": "bash", "cmd": "bash", "args": true },
+        { "name": "scp", "cmd": "scp", "args": true },
+        { "name": "ssh", "cmd": "ssh", "args": true },
+        { "name": "qemu-aarch64", "cmd": "qemu-aarch64", "args": true },
+        { "name": "docker", "cmd": "docker", "args": true },
+        { "name": "nerdctl", "cmd": "nerdctl", "args": true },
+        { "name": "brew", "cmd": "brew", "args": true },
+        { "name": "limactl", "cmd": "limactl", "args": true },
+        { "name": "curl", "cmd": "curl", "args": true }
+      ]
+    },
+    "shell:allow-stdin-write",
+    "shell:allow-kill",
+    "shell:allow-open",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-ask"
+  ]
+}

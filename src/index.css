@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  --m5-blue: #1A73E8;
+  --m5-blue-light: #4A9AF5;
+  --m5-green: #07C160;
+  --m5-bg: #1e1e1e;
+  --m5-bg-light: #2b2b2b;
+  --m5-sidebar: #262626;
+  --m5-border: #3a3a3a;
+  --m5-text: #ccc;
+  --m5-text-dim: #888;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--m5-bg);
+  color: var(--m5-text);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.font-mono {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.m5-btn {
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.m5-btn:hover { opacity: 0.85; }
+.m5-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.m5-btn-blue { background: var(--m5-blue); color: #fff; }
+.m5-btn-green { background: var(--m5-green); color: #fff; }
+
+.m5-select {
+  background: #333;
+  border: 1px solid var(--m5-border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #ccc;
+  outline: none;
+}
+.m5-select:focus { border-color: var(--m5-blue); }
+
+.m5-input {
+  background: #333;
+  border: 1px solid var(--m5-border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #ccc;
+  outline: none;
+}
+.m5-input:focus { border-color: var(--m5-blue); }
