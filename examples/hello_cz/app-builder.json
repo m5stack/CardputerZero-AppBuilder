@@ -1,0 +1,10 @@
+{
+  "package_name": "hello_cz",
+  "version": "0.1",
+  "app_name": "Hello CZ",
+  "bin_name": "hello_cz",
+  "description": "Desktop dev hello app using the cz_app.h ABI",
+  "runtime": "lvgl-dlopen",
+  "lvgl_version": "9.5",
+  "caps": ["keyboard"]
+}
