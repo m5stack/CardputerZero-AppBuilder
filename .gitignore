@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Rust workspace build output
+target/
+
+# czdev per-app build output
+**/.czdev/
+examples/*/build/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
