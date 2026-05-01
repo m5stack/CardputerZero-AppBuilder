@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+    "src-tauri",
+    "crates/czdev",
+]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.77.2"
+license = "MIT"
+repository = "https://github.com/m5stack/CardputerZero-AppBuilder"
