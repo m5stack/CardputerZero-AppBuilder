@@ -1,0 +1,4 @@
+[submodule "emulator"]
+	path = emulator
+	url = git@github.com:eggfly/M5CardputerZero-Emulator.git
+	branch = main
