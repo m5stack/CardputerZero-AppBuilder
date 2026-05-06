@@ -49,15 +49,28 @@ pub fn run_app(app_dir: &Path) -> Result<()> {
         out.lib_path.file_name().unwrap(),
     );
     std::fs::create_dir_all(staged.parent().unwrap())?;
-    std::fs::copy(&out.lib_path, &staged)
-        .with_context(|| format!("staging {} → {}", out.lib_path.display(), staged.display()))?;
+    // Skip the copy when the source is already the staged path (e.g. APPLaunch,
+    // which the emulator's own CMake drops straight into apps/). Copying a
+    // file onto itself truncates it to 0 bytes on macOS.
+    let src = out.lib_path.canonicalize().unwrap_or_else(|_| out.lib_path.clone());
+    let dst = staged.canonicalize().unwrap_or_else(|_| staged.clone());
+    if src != dst {
+        std::fs::copy(&out.lib_path, &staged)
+            .with_context(|| format!("staging {} → {}", out.lib_path.display(), staged.display()))?;
+    }
+
+    // Honour manifest-declared env with ${APP_DIR} expansion.
+    let manifest = crate::manifest::Manifest::load(app_dir)?;
+    let mut cmd = Command::new(&emulator_bin);
+    cmd.current_dir(&emulator_build)
+        .arg(staged.strip_prefix(&emulator_build).unwrap_or(&staged));
+    for (k, v) in &manifest.env {
+        let v = v.replace("${APP_DIR}", manifest.dir.to_str().unwrap());
+        cmd.env(k, v);
+    }
 
     println!("=> launching emulator: {} {}", emulator_bin.display(), staged.display());
-    let status = Command::new(&emulator_bin)
-        .current_dir(&emulator_build)
-        .arg(staged.strip_prefix(&emulator_build).unwrap_or(&staged))
-        .status()
-        .context("launching emulator")?;
+    let status = cmd.status().context("launching emulator")?;
     if !status.success() {
         return Err(anyhow!("emulator exited with {status}"));
     }
