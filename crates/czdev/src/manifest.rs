@@ -26,6 +26,16 @@ pub struct Manifest {
     pub caps: Vec<String>,
     #[serde(default)]
     pub assets: Vec<String>,
+    /// Extra arguments passed to `cmake configure`, e.g. ["-DENABLE_FOO=ON"].
+    #[serde(default)]
+    pub cmake_args: Vec<String>,
+    /// CMake target to build. Defaults to the bin_name if unset.
+    #[serde(default)]
+    pub cmake_target: Option<String>,
+    /// Extra environment variables to export before launching the emulator.
+    /// Values support ${APP_DIR} substitution.
+    #[serde(default)]
+    pub env: std::collections::HashMap<String, String>,
 
     /// Filled by the loader — absolute path to the project directory.
     #[serde(skip)]
