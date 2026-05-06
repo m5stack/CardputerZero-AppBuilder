@@ -1,0 +1,10 @@
+{
+  "package_name": "key_echo",
+  "version": "0.1",
+  "app_name": "Keypad Demo",
+  "bin_name": "key_echo",
+  "description": "LVGL's built-in keypad_encoder demo — keyboard navigation",
+  "runtime": "lvgl-dlopen",
+  "lvgl_version": "9.5",
+  "caps": ["keyboard"]
+}

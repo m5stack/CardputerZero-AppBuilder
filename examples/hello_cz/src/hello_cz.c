@@ -9,7 +9,7 @@ void app_main(lv_obj_t *parent)
     lv_obj_set_style_bg_opa(parent, LV_OPA_COVER, 0);
 
     g_label = lv_label_create(parent);
-    lv_label_set_text(g_label, "Hello, CardputerZero!\n320x170 LVGL desktop emulator");
+    lv_label_set_text(g_label, "Hello, CardputerZeo!\n320x170 LVGL desktop emulator");
     lv_obj_set_style_text_color(g_label, lv_color_hex(0x00E5FF), 0);
     lv_obj_set_style_text_align(g_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_center(g_label);

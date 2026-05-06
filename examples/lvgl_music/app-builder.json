@@ -1,0 +1,10 @@
+{
+  "package_name": "lvgl_music",
+  "version": "0.1",
+  "app_name": "LVGL Music",
+  "bin_name": "lvgl_music",
+  "description": "LVGL's built-in demo_music player",
+  "runtime": "lvgl-dlopen",
+  "lvgl_version": "9.5",
+  "caps": ["audio"]
+}
