@@ -1,0 +1,9 @@
+{
+  "package_name": "lvgl_widgets",
+  "version": "0.1",
+  "app_name": "LVGL Widgets",
+  "bin_name": "lvgl_widgets",
+  "description": "LVGL's built-in demo_widgets, loaded via force_load",
+  "runtime": "lvgl-dlopen",
+  "lvgl_version": "9.5"
+}
