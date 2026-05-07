@@ -2,6 +2,8 @@
 
 Online build system for [M5CardputerZero](https://docs.m5stack.com/) applications. Submit any public Git repository and get a ready-to-install `.deb` package — no local toolchain required.
 
+**Desktop Dev (czdev CLI):** [Quickstart](docs/QUICKSTART.md) | [快速上手](docs/QUICKSTART_ZH.md) | [クイックスタート](docs/QUICKSTART_JA.md)
+
 ## How It Works
 
 1. Go to **Actions** > **Build DEB Package** > **Run workflow**

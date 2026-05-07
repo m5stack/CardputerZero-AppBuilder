@@ -5,6 +5,7 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct Manifest {
     pub package_name: String,
     #[serde(default = "default_version")]

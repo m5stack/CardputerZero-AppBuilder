@@ -1,5 +1,7 @@
 # Quickstart — desktop dev for CardputerZero apps
 
+[中文](QUICKSTART_ZH.md) | [日本語](QUICKSTART_JA.md)
+
 Get a 320×170 LVGL app running on your Mac or Linux machine in ~3 minutes —
 no CardputerZero device required.
 
