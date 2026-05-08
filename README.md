@@ -1,10 +1,151 @@
 # CardputerZero AppBuilder
 
-Online build system for [M5CardputerZero](https://docs.m5stack.com/) applications. Submit any public Git repository and get a ready-to-install `.deb` package — no local toolchain required.
+Online build system & desktop development toolkit for [M5CardputerZero](https://docs.m5stack.com/) applications. Submit any public Git repository and get a ready-to-install `.deb` package — no local toolchain required. Or develop locally with the built-in emulator.
 
-**Desktop Dev (czdev CLI):** [Quickstart](docs/QUICKSTART.md) | [快速上手](docs/QUICKSTART_ZH.md) | [クイックスタート](docs/QUICKSTART_JA.md)
+## Desktop Emulator
 
-## How It Works
+The `czdev` CLI includes a desktop emulator that renders the CardputerZero 320x170 LCD inside a keyboard skin. Develop and test apps without a physical device.
+
+### NC2000 (文曲星 PDA Emulator)
+
+```bash
+cargo run -p czdev --release -- run apps/nc2000
+```
+
+![NC2000 Emulator](docs/nc2000_emu.png)
+
+### APPLauncher (Home Screen)
+
+```bash
+cargo run -p czdev --release -- run apps/applaunch/
+```
+
+![APPLauncher Emulator](docs/emu-applauncher.png)
+
+### Hello CardputerZero (Example App)
+
+```bash
+cargo run -p czdev --release -- run examples/key_echo
+```
+
+![Hello Example](docs/emu-hello.png)
+
+## Quickstart — Desktop Dev
+
+[中文](docs/QUICKSTART_ZH.md) | [日本語](docs/QUICKSTART_JA.md)
+
+Get a 320x170 LVGL app running on your Mac or Linux machine in ~3 minutes — no CardputerZero device required.
+
+### 1. Prerequisites
+
+**macOS:**
+```bash
+brew install cmake pkg-config sdl2 sdl2_image sdl2_mixer freetype
+```
+
+**Linux (Debian/Ubuntu):**
+```bash
+sudo apt install -y build-essential cmake pkg-config \
+    libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libfreetype-dev
+```
+
+**Windows:** MSYS2 MINGW64 shell. See [DESKTOP_DEV.md §4](docs/DESKTOP_DEV.md#4-windows-lvgl--emulator--known-issues-and-plan) for Windows-specific notes.
+
+You also need a recent Rust toolchain (for `czdev`):
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+### 2. Clone with submodules
+
+```bash
+git clone --recursive git@github.com:m5stack/CardputerZero-AppBuilder.git
+cd CardputerZero-AppBuilder
+```
+
+If you already cloned without `--recursive`:
+```bash
+git submodule update --init --recursive
+```
+
+### 3. Verify the environment
+
+```bash
+cargo run -p czdev --release -- doctor
+```
+
+All required rows should be green. If anything is MISSING, the output shows the exact install command for your OS.
+
+### 4. Run the hello app
+
+```bash
+cargo run -p czdev --release -- run examples/hello_cz
+```
+
+On first run this will:
+1. Build the emulator (once, cached in `emulator/build/`).
+2. Build the app into `.czdev/build/`.
+3. Stage the resulting shared library into the emulator's `apps/` directory.
+4. Launch the emulator with the app loaded via `dlopen`.
+
+### 5. Edit-run loop
+
+```bash
+cargo run -p czdev --release -- watch examples/hello_cz
+```
+
+The watcher polls `src/`, `include/`, `assets/`, `CMakeLists.txt` and `app-builder.json`. Any change triggers a rebuild and relaunches the emulator.
+
+### 6. Writing your own app
+
+Copy `examples/hello_cz/` and edit `src/hello_cz.c`. The ABI:
+
+```c
+#include <cz_app.h>
+
+void app_main(lv_obj_t *parent) {
+    lv_obj_t *label = lv_label_create(parent);
+    lv_label_set_text(label, "your UI here");
+    lv_obj_center(label);
+}
+
+void app_event(int type, void *data) {
+    (void)type; (void)data;
+}
+```
+
+The `CMakeLists.txt`:
+
+```cmake
+cmake_minimum_required(VERSION 3.16)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../sdk/cmake")
+include(CZApp)
+cz_add_lvgl_app(my_app SOURCES src/my_app.c)
+```
+
+And the manifest (`app-builder.json`, see [docs/APP_BUILDER_JSON.md](docs/APP_BUILDER_JSON.md)):
+
+```json
+{
+  "package_name": "my_app",
+  "bin_name": "my_app",
+  "app_name": "My App",
+  "runtime": "lvgl-dlopen",
+  "lvgl_version": "9.5"
+}
+```
+
+### 7. Shipping to a real device
+
+Build the aarch64 `.deb` via CI (trigger the `build-deb.yml` workflow), then deploy:
+
+```bash
+cargo run -p czdev --release -- deploy \
+    --host pi@192.168.50.150 \
+    --deb path/to/my_app_arm64.deb
+```
+
+## CI Online Build
 
 1. Go to **Actions** > **Build DEB Package** > **Run workflow**
 2. Fill in the form:
@@ -17,20 +158,6 @@ Online build system for [M5CardputerZero](https://docs.m5stack.com/) application
 3. The system automatically scans for `app-builder.json` files in the repo, builds each project, and packages them as `.deb`
 4. Download the `.deb` from the workflow run's **Artifacts** section
 
-### app-builder.json
-
-Place this file in each project directory that should be built:
-
-```json
-{
-  "package_name": "userdemo",
-  "version": "0.1",
-  "app_name": "UserDemo",
-  "bin_name": "M5CardputerZero-UserDemo",
-  "description": "M5CardputerZero User Demo Application"
-}
-```
-
 ### Install on Device
 
 ```bash
@@ -40,7 +167,7 @@ ssh pi@<device-ip> "sudo dpkg -i /tmp/<package>_arm64.deb"
 
 ## Architecture
 
-The CI pipeline runs on x86_64 and **cross-compiles** to ARM64 (aarch64) using the `aarch64-linux-gnu-` toolchain — the same approach used by the [M5Stack_Linux_Libs](https://github.com/m5stack/M5Stack_Linux_Libs) SDK. This is significantly faster than emulated ARM64 builds.
+The CI pipeline runs on x86_64 and **cross-compiles** to ARM64 (aarch64) using the `aarch64-linux-gnu-` toolchain — the same approach used by the [M5Stack_Linux_Libs](https://github.com/m5stack/M5Stack_Linux_Libs) SDK.
 
 ```
 User Input (repo URL)
@@ -77,9 +204,12 @@ Generated packages follow the [APPLaunch packaging conventions](https://github.c
         └── images/*.png
 ```
 
-## Future: Desktop IDE
+## Troubleshooting
 
-CardputerZero AppBuilder is planned to become a cross-platform desktop IDE (Windows, macOS, Linux) for building M5CardputerZero applications locally — a visual scaffold for beginners and hobbyists to create, build, and deploy apps to their devices.
+- **`emulator submodule not checked out`** — you forgot `--recursive`. Fix: `git submodule update --init --recursive`.
+- **LVGL link errors about unresolved symbols** — expected in the app library; resolved at `dlopen` time by the emulator.
+- **`indev_read_cb is not registered` warnings** — benign; the emulator falls back to a default keypad indev.
+- **macOS: `Library not loaded: @rpath/SDL2.framework/...`** — re-run `czdev doctor` and install what it reports.
 
 ## Related Projects
 
