@@ -9,7 +9,7 @@ use crate::github::GitHubClient;
 
 // Register your own OAuth App at https://github.com/settings/applications/new
 // Device flow does not require a client secret.
-const GITHUB_CLIENT_ID: &str = "REPLACE_WITH_REAL_CLIENT_ID";
+const GITHUB_CLIENT_ID: &str = "Ov23li06cv5RkdEJXrhL";
 const DEVICE_CODE_URL: &str = "https://github.com/login/device/code";
 const ACCESS_TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
 
