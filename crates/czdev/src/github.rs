@@ -125,22 +125,13 @@ pub enum Permission {
 
 impl GitHubClient {
     pub fn new(token: &str) -> Self {
-        let mut builder = Client::builder();
-        // Read proxy: prefer ALL_PROXY (socks5), then HTTPS_PROXY (http connect)
-        if let Ok(proxy_url) = std::env::var("ALL_PROXY")
-            .or_else(|_| std::env::var("all_proxy"))
-            .or_else(|_| std::env::var("HTTPS_PROXY"))
-            .or_else(|_| std::env::var("https_proxy"))
-            .or_else(|_| std::env::var("HTTP_PROXY"))
-            .or_else(|_| std::env::var("http_proxy"))
-        {
-            if let Ok(proxy) = reqwest::Proxy::all(&proxy_url) {
-                builder = builder.proxy(proxy);
-            }
-        }
+        // reqwest with system-proxy feature auto-reads HTTP_PROXY/HTTPS_PROXY/ALL_PROXY
+        let client = Client::builder()
+            .build()
+            .unwrap_or_else(|_| Client::new());
         Self {
             token: token.to_string(),
-            client: builder.build().unwrap_or_else(|_| Client::new()),
+            client,
         }
     }
 
@@ -445,22 +436,64 @@ impl GitHubClient {
                         .context("LFS upload status")?;
                 }
 
-                // Step 3: Verify (best-effort, not all endpoints support OAuth tokens)
+                // Step 3: Verify - use a fresh client without proxy to avoid interference
                 if let Some(verify) = &actions.verify {
-                    let mut req = self.client.post(&verify.href);
+                    let verify_client = Client::builder()
+                        .no_proxy()
+                        .build()
+                        .unwrap_or_else(|_| Client::new());
+                    let mut req = verify_client.post(&verify.href);
                     if let Some(headers) = &verify.header {
                         for (k, v) in headers {
                             req = req.header(k.as_str(), v.as_str());
                         }
                     }
-                    let _ = req
+                    let verify_resp = req
                         .header("Content-Type", "application/vnd.git-lfs+json")
-                        .json(&LfsObject {
-                            oid: oid.to_string(),
-                            size: size as u64,
-                        })
+                        .json(&serde_json::json!({
+                            "oid": oid,
+                            "size": size
+                        }))
                         .send();
-                    // Ignore verify failures - the upload itself succeeded
+                    match verify_resp {
+                        Ok(r) if r.status().is_success() => {}
+                        Ok(r) => {
+                            // Try again with proxy
+                            let mut req2 = self.client.post(&verify.href);
+                            if let Some(headers) = &verify.header {
+                                for (k, v) in headers {
+                                    req2 = req2.header(k.as_str(), v.as_str());
+                                }
+                            }
+                            let _ = req2
+                                .header("Content-Type", "application/vnd.git-lfs+json")
+                                .json(&serde_json::json!({
+                                    "oid": oid,
+                                    "size": size
+                                }))
+                                .send();
+                            // If both fail, continue anyway - the object may still be usable
+                            eprintln!("  warning: LFS verify returned {}, continuing...", r.status());
+                        }
+                        Err(_) => {
+                            // No direct access, try with proxy
+                            let mut req2 = self.client.post(&verify.href);
+                            if let Some(headers) = &verify.header {
+                                for (k, v) in headers {
+                                    req2 = req2.header(k.as_str(), v.as_str());
+                                }
+                            }
+                            req2.header("Content-Type", "application/vnd.git-lfs+json")
+                                .json(&serde_json::json!({
+                                    "oid": oid,
+                                    "size": size
+                                }))
+                                .send()
+                                .context("LFS verify")?
+                                .error_for_status()
+                                .context("LFS verify status")?;
+                        }
+                    }
                 }
             }
             // else: no actions means the object already exists in LFS storage

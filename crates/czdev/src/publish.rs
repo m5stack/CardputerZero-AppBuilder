@@ -20,6 +20,9 @@ struct DebMetadata {
 }
 
 pub fn run(deb: Option<&Path>) -> Result<()> {
+    // Check git and git-lfs are installed
+    check_git_lfs_installed()?;
+
     let deb_path = resolve_deb(deb)?;
     println!("Package: {}", deb_path.display());
     println!();
@@ -99,44 +102,66 @@ pub fn run(deb: Option<&Path>) -> Result<()> {
         )
     };
 
-    println!("{} {TARGET_OWNER}/{TARGET_REPO}...", t!("publish.uploading_to"));
-
-    // Get base ref
-    let base_sha = gh.get_ref_sha(&push_owner, &push_repo, "heads/main")?;
-    let (_, base_tree_sha) = gh.get_commit(&push_owner, &push_repo, &base_sha)?;
-
-    // Upload via LFS + create pointer blob
-    print!("  → {} ({:.1} MB)... ", t!("publish.uploading_blob"), size_mb);
+    // Upload via git init + fetch + lfs push (no full clone needed)
     let file_bytes = std::fs::read(&deb_path).context("reading deb file")?;
     let sha256_hash = hex_sha256(&file_bytes);
-    let blob_sha = gh.upload_lfs_and_create_pointer_blob(
-        &push_owner, &push_repo, &file_bytes, &sha256_hash,
-    )?;
-    println!("{} (sha: {})", t!("publish.done"), &blob_sha[..8]);
-
-    // Create tree
     let file_path_in_repo = format!(
         "pool/main/{}/{}_{}_{}.deb",
         meta.package, meta.package, meta.version, meta.architecture
     );
-    print!("  → {} ", t!("publish.creating_tree"));
-    let tree_sha =
-        gh.create_tree(&push_owner, &push_repo, &base_tree_sha, &file_path_in_repo, Some(&blob_sha))?;
-    println!("{}", t!("publish.done"));
-
-    // Create commit
-    let commit_msg = format!("publish: {} {} ({})", meta.package, meta.version, meta.architecture);
-    print!("  → {} ", t!("publish.creating_commit"));
-    let commit_sha = gh.create_commit(&push_owner, &push_repo, &commit_msg, &tree_sha, &base_sha)?;
-    println!("{}", t!("publish.done"));
-
-    // Create branch
     let branch = branch_name(&meta);
-    print!("  → {} {branch}... ", t!("publish.creating_branch"));
-    gh.create_ref(&push_owner, &push_repo, &branch, &commit_sha)?;
+    let remote_url = format!("git@github.com:{push_owner}/{push_repo}.git");
+
+    println!("{} {TARGET_OWNER}/{TARGET_REPO}...", t!("publish.uploading_to"));
+
+    let tmp_dir = std::env::temp_dir().join(format!("czdev-publish-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+    std::fs::create_dir_all(&tmp_dir)?;
+
+    // Init bare-minimum repo with LFS
+    run_cmd_in(&tmp_dir, "git", &["init"])?;
+    run_cmd_in(&tmp_dir, "git", &["remote", "add", "origin", &remote_url])?;
+    run_cmd_in(&tmp_dir, "git", &["lfs", "install", "--local"])?;
+    run_cmd_in(&tmp_dir, "git", &[
+        "config", "lfs.https://github.com/CardputerZero/packages.git/info/lfs.locksverify", "false",
+    ])?;
+
+    // Fetch only the tip of main (minimal data, no LFS objects)
+    print!("  → git fetch (minimal)... ");
+    run_cmd_in(&tmp_dir, "git", &[
+        "fetch", "--depth=1", "--filter=blob:none", "origin", "main",
+    ])?;
     println!("{}", t!("publish.done"));
 
-    // Create PR
+    // Create branch from fetched main
+    print!("  → {} {branch}... ", t!("publish.creating_branch"));
+    run_cmd_in(&tmp_dir, "git", &["checkout", "-b", &branch, "origin/main"])?;
+    println!("{}", t!("publish.done"));
+
+    // Copy deb into place
+    let dest_dir = tmp_dir.join("pool/main").join(&meta.package);
+    std::fs::create_dir_all(&dest_dir)?;
+    std::fs::copy(&deb_path, dest_dir.join(format!(
+        "{}_{}_{}.deb", meta.package, meta.version, meta.architecture
+    )))?;
+
+    // Add and commit
+    print!("  → {} ", t!("publish.creating_commit"));
+    run_cmd_in(&tmp_dir, "git", &["add", &file_path_in_repo])?;
+    run_cmd_in(&tmp_dir, "git", &[
+        "commit", "-m", &format!("publish: {} {} ({})", meta.package, meta.version, meta.architecture),
+    ])?;
+    println!("{}", t!("publish.done"));
+
+    // Push branch (LFS upload happens automatically via SSH)
+    print!("  → {} ({:.1} MB)... ", t!("publish.uploading_blob"), size_mb);
+    run_cmd_in(&tmp_dir, "git", &["push", "origin", &branch])?;
+    println!("{}", t!("publish.done"));
+
+    // Cleanup
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+
+    // Create PR via API
     let head = pr_head.unwrap_or_else(|| branch.clone());
     let pr_body = format!(
         "## Package: `{}`\n\n\
@@ -321,13 +346,40 @@ fn check_version_newer(_gh: &GitHubClient, meta: &DebMetadata) -> Result<()> {
 }
 
 fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
-    // Simple version comparison: split by '.', '-', '~' and compare segments
     let parse = |v: &str| -> Vec<u64> {
         v.split(|c: char| c == '.' || c == '-' || c == '~')
             .filter_map(|s| s.parse::<u64>().ok())
             .collect()
     };
-    let va = parse(a);
-    let vb = parse(b);
-    va.cmp(&vb)
+    parse(a).cmp(&parse(b))
+}
+
+fn check_git_lfs_installed() -> Result<()> {
+    // Check git
+    if Command::new("git").arg("--version").output().is_err() {
+        return Err(anyhow!(
+            "git is not installed.\n  Install: https://git-scm.com/downloads"
+        ));
+    }
+    // Check git-lfs
+    let lfs_check = Command::new("git").args(["lfs", "version"]).output();
+    match lfs_check {
+        Ok(output) if output.status.success() => Ok(()),
+        _ => Err(anyhow!(
+            "git-lfs is required for publishing.\n\n  Install:\n    macOS:  brew install git-lfs\n    Linux:  sudo apt install git-lfs\n    Windows: https://git-lfs.com\n\n  Then run: git lfs install"
+        )),
+    }
+}
+
+fn run_cmd_in(dir: &Path, cmd: &str, args: &[&str]) -> Result<()> {
+    let output = Command::new(cmd)
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .with_context(|| format!("running {cmd} {}", args.join(" ")))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!("{cmd} {} failed:\n{}", args.join(" "), stderr));
+    }
+    Ok(())
 }
