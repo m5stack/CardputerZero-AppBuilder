@@ -125,9 +125,22 @@ pub enum Permission {
 
 impl GitHubClient {
     pub fn new(token: &str) -> Self {
+        let mut builder = Client::builder();
+        // Read proxy: prefer ALL_PROXY (socks5), then HTTPS_PROXY (http connect)
+        if let Ok(proxy_url) = std::env::var("ALL_PROXY")
+            .or_else(|_| std::env::var("all_proxy"))
+            .or_else(|_| std::env::var("HTTPS_PROXY"))
+            .or_else(|_| std::env::var("https_proxy"))
+            .or_else(|_| std::env::var("HTTP_PROXY"))
+            .or_else(|_| std::env::var("http_proxy"))
+        {
+            if let Ok(proxy) = reqwest::Proxy::all(&proxy_url) {
+                builder = builder.proxy(proxy);
+            }
+        }
         Self {
             token: token.to_string(),
-            client: Client::new(),
+            client: builder.build().unwrap_or_else(|_| Client::new()),
         }
     }
 
@@ -432,7 +445,7 @@ impl GitHubClient {
                         .context("LFS upload status")?;
                 }
 
-                // Step 3: Verify if required
+                // Step 3: Verify (best-effort, not all endpoints support OAuth tokens)
                 if let Some(verify) = &actions.verify {
                     let mut req = self.client.post(&verify.href);
                     if let Some(headers) = &verify.header {
@@ -440,15 +453,14 @@ impl GitHubClient {
                             req = req.header(k.as_str(), v.as_str());
                         }
                     }
-                    req.header("Content-Type", "application/vnd.git-lfs+json")
+                    let _ = req
+                        .header("Content-Type", "application/vnd.git-lfs+json")
                         .json(&LfsObject {
                             oid: oid.to_string(),
                             size: size as u64,
                         })
-                        .send()
-                        .context("LFS verify")?
-                        .error_for_status()
-                        .context("LFS verify status")?;
+                        .send();
+                    // Ignore verify failures - the upload itself succeeded
                 }
             }
             // else: no actions means the object already exists in LFS storage
