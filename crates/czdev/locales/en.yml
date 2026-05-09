@@ -1,0 +1,77 @@
+auth:
+  requesting_code: "Requesting device code from GitHub..."
+  open: "Open:"
+  waiting: "Waiting for authorization (press Ctrl-C to cancel)..."
+  expired: "Device code expired, please try again."
+  logged_in: "Logged in as"
+  token_saved: "Token saved to"
+  removed: "Removed credentials for"
+  credentials_removed: "Credentials removed."
+  not_logged_in: "Not logged in."
+  not_logged_in_hint: "Not logged in. Run `czdev login` first."
+
+publish:
+  preflight: "Preflight checks:"
+  desktop_found: ".desktop file found"
+  desktop_missing: "deb does not contain a .desktop file. All CardputerZero apps must include one."
+  email_match: "Maintainer email matches GitHub account"
+  email_mismatch: "Maintainer email does not match your GitHub verified emails."
+  pkg_valid: "Package name is valid"
+  pkg_invalid: "Invalid package name. Must match [a-z0-9][a-z0-9.+-]+"
+  too_large: "File too large. GitHub blob API limit is 100 MB."
+  version_newer: "is newer than existing"
+  version_not_newer: "is not newer than existing version"
+  new_package: "New package (no existing version found)"
+  no_write_access: "You don't have write access to"
+  forking: "Forking to your account..."
+  uploading_to: "Uploading to"
+  uploading_blob: "Uploading blob"
+  creating_tree: "Creating tree..."
+  creating_commit: "Creating commit..."
+  creating_branch: "Creating branch"
+  creating_pr: "Creating pull request..."
+  pr_created: "Pull request created:"
+  pr_hint: "The PR will be validated by CI. A maintainer will review and merge it."
+  done: "done"
+
+unpublish:
+  checking: "Checking ownership of"
+  not_owner: "Cannot unpublish: package maintainer does not match your account."
+  ownership_ok: "Ownership verified"
+  creating_pr: "Creating removal PR..."
+  pr_created: "Removal PR created:"
+
+bump:
+  current_version: "Current version in deb:"
+  latest_published: "Latest published version:"
+  no_published: "No published version found (new package)"
+  next_version: "Next version:"
+  hint_control: "To rebuild with this version, update your package control file:"
+  hint_env: "Or if using CMake/packaging scripts, set:"
+
+doctor:
+  checking: "Checking build dependencies..."
+  found: "found"
+  missing: "MISSING"
+  all_ok: "All dependencies satisfied."
+  install_hint: "Install missing dependencies with:"
+
+build:
+  building: "Building app..."
+  success: "Build succeeded:"
+  failed: "Build failed."
+
+run:
+  launching: "Launching emulator..."
+
+watch:
+  watching: "Watching for changes..."
+  rebuilding: "Change detected, rebuilding..."
+
+deploy:
+  success: "Deploy succeeded."
+
+common:
+  file_not_found: "File not found:"
+  no_deb_found: "No .deb file found. Specify with --deb <path>"
+  multiple_debs: "Multiple .deb files in build/. Specify one with --deb <path>"

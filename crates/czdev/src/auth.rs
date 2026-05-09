@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -7,8 +8,6 @@ use std::time::Duration;
 
 use crate::github::GitHubClient;
 
-// Register your own OAuth App at https://github.com/settings/applications/new
-// Device flow does not require a client secret.
 const GITHUB_CLIENT_ID: &str = "Ov23li06cv5RkdEJXrhL";
 const DEVICE_CODE_URL: &str = "https://github.com/login/device/code";
 const ACCESS_TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
@@ -28,9 +27,7 @@ pub fn credentials_path() -> Result<PathBuf> {
 pub fn load_token() -> Result<String> {
     let path = credentials_path()?;
     if !path.exists() {
-        return Err(anyhow!(
-            "not logged in. Run `czdev login` first."
-        ));
+        return Err(anyhow!("{}", t!("auth.not_logged_in_hint")));
     }
     let data = fs::read_to_string(&path).context("reading credentials")?;
     let creds: Credentials = serde_json::from_str(&data).context("parsing credentials")?;
@@ -40,7 +37,7 @@ pub fn load_token() -> Result<String> {
 pub fn load_credentials() -> Result<Credentials> {
     let path = credentials_path()?;
     if !path.exists() {
-        return Err(anyhow!("not logged in. Run `czdev login` first."));
+        return Err(anyhow!("{}", t!("auth.not_logged_in_hint")));
     }
     let data = fs::read_to_string(&path).context("reading credentials")?;
     serde_json::from_str(&data).context("parsing credentials")
@@ -79,7 +76,7 @@ struct TokenResponse {
 pub fn login() -> Result<()> {
     let client = reqwest::blocking::Client::new();
 
-    println!("Requesting device code from GitHub...");
+    println!("{}", t!("auth.requesting_code"));
     let resp: DeviceCodeResponse = client
         .post(DEVICE_CODE_URL)
         .header("Accept", "application/json")
@@ -93,13 +90,14 @@ pub fn login() -> Result<()> {
         .context("parsing device code response")?;
 
     println!();
-    println!("  Open:  {}", resp.verification_uri);
-    println!("  Code:  {}", resp.user_code);
+    println!("  {}  {}", t!("auth.open"), resp.verification_uri);
+    println!();
+    println!("  \x1b[1;91m{}\x1b[0m", resp.user_code);
     println!();
 
     let _ = open::that(&resp.verification_uri);
 
-    println!("Waiting for authorization (press Ctrl-C to cancel)...");
+    println!("{}", t!("auth.waiting"));
 
     let token = loop {
         thread::sleep(Duration::from_secs(resp.interval));
@@ -127,7 +125,7 @@ pub fn login() -> Result<()> {
                 thread::sleep(Duration::from_secs(5));
                 continue;
             }
-            Some("expired_token") => return Err(anyhow!("device code expired, please try again")),
+            Some("expired_token") => return Err(anyhow!("{}", t!("auth.expired"))),
             Some(e) => return Err(anyhow!("OAuth error: {e}")),
             None => continue,
         }
@@ -144,8 +142,8 @@ pub fn login() -> Result<()> {
     save_credentials(&creds)?;
 
     println!();
-    println!("✓ Logged in as {} ({})", user.login, user.email.unwrap_or_default());
-    println!("  Token saved to {:?}", credentials_path()?);
+    println!("✓ {} {} ({})", t!("auth.logged_in"), user.login, user.email.unwrap_or_default());
+    println!("  {} {:?}", t!("auth.token_saved"), credentials_path()?);
     Ok(())
 }
 
@@ -155,18 +153,17 @@ pub fn logout() -> Result<()> {
         let creds = load_credentials().ok();
         fs::remove_file(&path).context("removing credentials")?;
         if let Some(c) = creds {
-            println!("Removed credentials for {}.", c.github_username);
+            println!("{} {}.", t!("auth.removed"), c.github_username);
         } else {
-            println!("Credentials removed.");
+            println!("{}", t!("auth.credentials_removed"));
         }
     } else {
-        println!("Not logged in.");
+        println!("{}", t!("auth.not_logged_in"));
     }
     Ok(())
 }
 
 fn chrono_now() -> String {
-    // Simple ISO-8601 without pulling in chrono crate
     use std::time::SystemTime;
     let dur = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)

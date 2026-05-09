@@ -1,0 +1,77 @@
+auth:
+  requesting_code: "正在向 GitHub 請求裝置碼..."
+  open: "開啟:"
+  waiting: "等待授權中 (按 Ctrl-C 取消)..."
+  expired: "裝置碼已過期，請重試。"
+  logged_in: "已登入為"
+  token_saved: "權杖已儲存至"
+  removed: "已移除憑據，使用者:"
+  credentials_removed: "憑據已移除。"
+  not_logged_in: "未登入。"
+  not_logged_in_hint: "未登入，請先執行 `czdev login`。"
+
+publish:
+  preflight: "預檢:"
+  desktop_found: "找到 .desktop 檔案"
+  desktop_missing: "deb 中不包含 .desktop 檔案。所有 CardputerZero 應用程式必須包含一個。"
+  email_match: "維護者信箱與 GitHub 帳號匹配"
+  email_mismatch: "維護者信箱與您的 GitHub 驗證信箱不匹配。"
+  pkg_valid: "套件名稱合法"
+  pkg_invalid: "套件名稱不合法，必須符合 [a-z0-9][a-z0-9.+-]+"
+  too_large: "檔案過大。GitHub blob API 限制為 100 MB。"
+  version_newer: "比已發佈版本更新"
+  version_not_newer: "不比已發佈版本更新"
+  new_package: "新套件 (未找到已發佈版本)"
+  no_write_access: "您沒有寫入權限:"
+  forking: "正在 Fork 到您的帳號..."
+  uploading_to: "正在上傳到"
+  uploading_blob: "上傳檔案"
+  creating_tree: "建立檔案樹..."
+  creating_commit: "建立提交..."
+  creating_branch: "建立分支"
+  creating_pr: "建立 Pull Request..."
+  pr_created: "Pull Request 已建立:"
+  pr_hint: "PR 將由 CI 校驗。維護者審核後會合併。"
+  done: "完成"
+
+unpublish:
+  checking: "正在驗證所有權:"
+  not_owner: "無法下架: 套件維護者與您的帳號不匹配。"
+  ownership_ok: "所有權驗證通過"
+  creating_pr: "正在建立下架 PR..."
+  pr_created: "下架 PR 已建立:"
+
+bump:
+  current_version: "deb 中的目前版本:"
+  latest_published: "已發佈的最新版本:"
+  no_published: "未找到已發佈版本 (新套件)"
+  next_version: "下一個版本:"
+  hint_control: "請更新套件的 control 檔案中的版本號:"
+  hint_env: "或在 CMake/打包腳本中設定:"
+
+doctor:
+  checking: "正在檢查建置依賴..."
+  found: "已安裝"
+  missing: "缺失"
+  all_ok: "所有依賴已滿足。"
+  install_hint: "請安裝缺失的依賴:"
+
+build:
+  building: "正在建置應用程式..."
+  success: "建置成功:"
+  failed: "建置失敗。"
+
+run:
+  launching: "正在啟動模擬器..."
+
+watch:
+  watching: "正在監視檔案變更..."
+  rebuilding: "偵測到變更，正在重新建置..."
+
+deploy:
+  success: "部署成功。"
+
+common:
+  file_not_found: "檔案未找到:"
+  no_deb_found: "未找到 .deb 檔案，請用 --deb <路徑> 指定"
+  multiple_debs: "build/ 下有多個 .deb 檔案，請用 --deb <路徑> 指定一個"

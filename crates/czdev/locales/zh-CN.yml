@@ -1,0 +1,77 @@
+auth:
+  requesting_code: "正在向 GitHub 请求设备码..."
+  open: "打开:"
+  waiting: "等待授权中 (按 Ctrl-C 取消)..."
+  expired: "设备码已过期，请重试。"
+  logged_in: "已登录为"
+  token_saved: "令牌已保存到"
+  removed: "已移除凭据，用户:"
+  credentials_removed: "凭据已移除。"
+  not_logged_in: "未登录。"
+  not_logged_in_hint: "未登录，请先运行 `czdev login`。"
+
+publish:
+  preflight: "预检:"
+  desktop_found: "找到 .desktop 文件"
+  desktop_missing: "deb 中不包含 .desktop 文件。所有 CardputerZero 应用必须包含一个。"
+  email_match: "维护者邮箱与 GitHub 账号匹配"
+  email_mismatch: "维护者邮箱与您的 GitHub 验证邮箱不匹配。"
+  pkg_valid: "包名合法"
+  pkg_invalid: "包名不合法，必须匹配 [a-z0-9][a-z0-9.+-]+"
+  too_large: "文件过大。GitHub blob API 限制为 100 MB。"
+  version_newer: "比已发布版本更新"
+  version_not_newer: "不比已发布版本更新"
+  new_package: "新包 (未找到已发布版本)"
+  no_write_access: "您没有写权限:"
+  forking: "正在 Fork 到您的账号..."
+  uploading_to: "正在上传到"
+  uploading_blob: "上传文件"
+  creating_tree: "创建文件树..."
+  creating_commit: "创建提交..."
+  creating_branch: "创建分支"
+  creating_pr: "创建 Pull Request..."
+  pr_created: "Pull Request 已创建:"
+  pr_hint: "PR 将由 CI 校验。维护者审核后会合并。"
+  done: "完成"
+
+unpublish:
+  checking: "正在验证所有权:"
+  not_owner: "无法下架: 包维护者与您的账号不匹配。"
+  ownership_ok: "所有权验证通过"
+  creating_pr: "正在创建下架 PR..."
+  pr_created: "下架 PR 已创建:"
+
+bump:
+  current_version: "deb 中的当前版本:"
+  latest_published: "已发布的最新版本:"
+  no_published: "未找到已发布版本 (新包)"
+  next_version: "下一个版本:"
+  hint_control: "请更新包的 control 文件中的版本号:"
+  hint_env: "或在 CMake/打包脚本中设置:"
+
+doctor:
+  checking: "正在检查构建依赖..."
+  found: "已安装"
+  missing: "缺失"
+  all_ok: "所有依赖已满足。"
+  install_hint: "请安装缺失的依赖:"
+
+build:
+  building: "正在构建应用..."
+  success: "构建成功:"
+  failed: "构建失败。"
+
+run:
+  launching: "正在启动模拟器..."
+
+watch:
+  watching: "正在监视文件变更..."
+  rebuilding: "检测到变更，正在重新构建..."
+
+deploy:
+  success: "部署成功。"
+
+common:
+  file_not_found: "文件未找到:"
+  no_deb_found: "未找到 .deb 文件，请用 --deb <路径> 指定"
+  multiple_debs: "build/ 下有多个 .deb 文件，请用 --deb <路径> 指定一个"

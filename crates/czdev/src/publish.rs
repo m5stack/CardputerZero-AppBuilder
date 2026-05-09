@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use base64::Engine;
+use rust_i18n::t;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -28,47 +29,43 @@ pub fn run(deb: Option<&Path>) -> Result<()> {
     let gh = GitHubClient::new(&token);
 
     let user = gh.get_user().context("fetching user info")?;
-    let verified_emails = gh.get_verified_emails()?;
 
-    // Also include the noreply email
+    // Build list of emails to match against: public email + noreply
+    // (no need for user:email scope)
     let noreply = format!("{}@users.noreply.github.com", user.login);
-    let mut all_emails = verified_emails.clone();
-    if !all_emails.contains(&noreply) {
-        all_emails.push(noreply);
+    let mut all_emails = vec![noreply];
+    if let Some(ref email) = user.email {
+        if !email.is_empty() {
+            all_emails.push(email.clone());
+        }
     }
 
-    println!("Preflight checks:");
+    println!("{}", t!("publish.preflight"));
 
     // 1. Check .desktop file exists
     let has_desktop = check_desktop(&deb_path)?;
     if !has_desktop {
-        return Err(anyhow!(
-            "deb does not contain a .desktop file. All CardputerZero apps must include one."
-        ));
+        return Err(anyhow!("{}", t!("publish.desktop_missing")));
     }
-    println!("  ✓ .desktop file found");
+    println!("  ✓ {}", t!("publish.desktop_found"));
 
     // 2. Extract metadata and check email
     let meta = extract_metadata(&deb_path)?;
     if !all_emails.iter().any(|e| e.eq_ignore_ascii_case(&meta.maintainer_email)) {
         return Err(anyhow!(
-            "Maintainer email '{}' does not match any of your GitHub verified emails.\n  \
-             Your emails: {:?}\n  \
-             The deb Maintainer field must use your GitHub email.",
+            "{}\n  Maintainer: {}\n  Your emails: {:?}",
+            t!("publish.email_mismatch"),
             meta.maintainer_email,
             all_emails
         ));
     }
-    println!("  ✓ Maintainer email matches GitHub account");
+    println!("  ✓ {}", t!("publish.email_match"));
 
     // 3. Package name validation
     if !is_valid_package_name(&meta.package) {
-        return Err(anyhow!(
-            "Invalid package name '{}'. Must match [a-z0-9][a-z0-9.+-]+",
-            meta.package
-        ));
+        return Err(anyhow!("{}: '{}'", t!("publish.pkg_invalid"), meta.package));
     }
-    println!("  ✓ Package name \"{}\" is valid", meta.package);
+    println!("  ✓ {} \"{}\"", t!("publish.pkg_valid"), meta.package);
 
     // 4. Show summary
     let file_size = std::fs::metadata(&deb_path)?.len();
@@ -80,10 +77,7 @@ pub fn run(deb: Option<&Path>) -> Result<()> {
     println!();
 
     if file_size > 100 * 1024 * 1024 {
-        return Err(anyhow!(
-            "File too large ({:.1} MB). GitHub blob API limit is 100 MB.",
-            size_mb
-        ));
+        return Err(anyhow!("{} ({:.1} MB)", t!("publish.too_large"), size_mb));
     }
 
     // 5. Check version is newer than existing
@@ -94,8 +88,8 @@ pub fn run(deb: Option<&Path>) -> Result<()> {
     let (push_owner, push_repo, pr_head) = if perm >= Permission::Write {
         (TARGET_OWNER.to_string(), TARGET_REPO.to_string(), None)
     } else {
-        println!("You don't have write access to {TARGET_OWNER}/{TARGET_REPO}.");
-        print!("  → Forking to your account... ");
+        println!("{} {TARGET_OWNER}/{TARGET_REPO}.", t!("publish.no_write_access"));
+        print!("  → {}  ", t!("publish.forking"));
         let fork_name = gh.fork_repo(TARGET_OWNER, TARGET_REPO)?;
         println!("done ({fork_name})");
         let parts: Vec<&str> = fork_name.split('/').collect();
@@ -106,41 +100,41 @@ pub fn run(deb: Option<&Path>) -> Result<()> {
         )
     };
 
-    println!("Uploading to {TARGET_OWNER}/{TARGET_REPO}...");
+    println!("{} {TARGET_OWNER}/{TARGET_REPO}...", t!("publish.uploading_to"));
 
     // Get base ref
     let base_sha = gh.get_ref_sha(&push_owner, &push_repo, "heads/main")?;
     let (_, base_tree_sha) = gh.get_commit(&push_owner, &push_repo, &base_sha)?;
 
     // Upload blob
-    print!("  → Uploading blob ({:.1} MB)... ", size_mb);
+    print!("  → {} ({:.1} MB)... ", t!("publish.uploading_blob"), size_mb);
     let file_bytes = std::fs::read(&deb_path).context("reading deb file")?;
     let sha256_hash = hex_sha256(&file_bytes);
     let content_b64 = base64::engine::general_purpose::STANDARD.encode(&file_bytes);
     let blob_sha = gh.create_blob(&push_owner, &push_repo, &content_b64)?;
-    println!("done (sha: {})", &blob_sha[..8]);
+    println!("{} (sha: {})", t!("publish.done"), &blob_sha[..8]);
 
     // Create tree
     let file_path_in_repo = format!(
         "pool/main/{}/{}_{}_{}.deb",
         meta.package, meta.package, meta.version, meta.architecture
     );
-    print!("  → Creating tree... ");
+    print!("  → {} ", t!("publish.creating_tree"));
     let tree_sha =
         gh.create_tree(&push_owner, &push_repo, &base_tree_sha, &file_path_in_repo, Some(&blob_sha))?;
-    println!("done");
+    println!("{}", t!("publish.done"));
 
     // Create commit
     let commit_msg = format!("publish: {} {} ({})", meta.package, meta.version, meta.architecture);
-    print!("  → Creating commit... ");
+    print!("  → {} ", t!("publish.creating_commit"));
     let commit_sha = gh.create_commit(&push_owner, &push_repo, &commit_msg, &tree_sha, &base_sha)?;
-    println!("done");
+    println!("{}", t!("publish.done"));
 
     // Create branch
     let branch = branch_name(&meta);
-    print!("  → Creating branch {branch}... ");
+    print!("  → {} {branch}... ", t!("publish.creating_branch"));
     gh.create_ref(&push_owner, &push_repo, &branch, &commit_sha)?;
-    println!("done");
+    println!("{}", t!("publish.done"));
 
     // Create PR
     let head = pr_head.unwrap_or_else(|| branch.clone());
@@ -163,7 +157,7 @@ pub fn run(deb: Option<&Path>) -> Result<()> {
         sha256_hash,
         file_path_in_repo,
     );
-    print!("  → Creating pull request... ");
+    print!("  → {} ", t!("publish.creating_pr"));
     let pr = gh.create_pull_request(
         TARGET_OWNER,
         TARGET_REPO,
@@ -172,20 +166,20 @@ pub fn run(deb: Option<&Path>) -> Result<()> {
         &head,
         "main",
     )?;
-    println!("done");
+    println!("{}", t!("publish.done"));
 
     println!();
-    println!("✓ Pull request created:");
+    println!("✓ {}", t!("publish.pr_created"));
     println!("  {}", pr.html_url);
     println!();
-    println!("  The PR will be validated by CI. A maintainer will review and merge it.");
+    println!("  {}", t!("publish.pr_hint"));
     Ok(())
 }
 
 fn resolve_deb(deb: Option<&Path>) -> Result<PathBuf> {
     if let Some(p) = deb {
         if !p.is_file() {
-            return Err(anyhow!("file not found: {}", p.display()));
+            return Err(anyhow!("{} {}", t!("common.file_not_found"), p.display()));
         }
         return Ok(p.to_path_buf());
     }
@@ -314,15 +308,14 @@ fn check_version_newer(_gh: &GitHubClient, meta: &DebMetadata) -> Result<()> {
     if let Some(existing) = existing_version {
         if compare_versions(&meta.version, &existing) != std::cmp::Ordering::Greater {
             return Err(anyhow!(
-                "Version {} is not newer than existing version {}.\n  \
-                 Bump the version in your package before publishing.",
-                meta.version,
-                existing
+                "{} {} {} {}",
+                meta.version, t!("publish.version_not_newer"), existing,
+                "\n  Use `czdev bump` to check the next version."
             ));
         }
-        println!("  ✓ Version {} is newer than existing {}", meta.version, existing);
+        println!("  ✓ {} {} {} {}", meta.version, t!("publish.version_newer"), existing, "");
     } else {
-        println!("  ✓ New package (no existing version found)");
+        println!("  ✓ {}", t!("publish.new_package"));
     }
     Ok(())
 }

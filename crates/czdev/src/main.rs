@@ -4,6 +4,7 @@ mod bump;
 mod deploy;
 mod doctor;
 mod github;
+mod i18n;
 mod list;
 mod manifest;
 mod paths;
@@ -15,6 +16,8 @@ mod watch;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+
+rust_i18n::i18n!("locales", fallback = "en");
 
 /// CardputerZero desktop dev CLI.
 ///
@@ -102,6 +105,7 @@ enum Command {
 }
 
 fn main() -> Result<()> {
+    i18n::init();
     let cli = Cli::parse();
     match cli.command {
         Command::Doctor => doctor::run(),
