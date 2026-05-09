@@ -7,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::auth;
 use crate::github::{GitHubClient, Permission};
+use crate::manifest::Manifest;
 
 const TARGET_OWNER: &str = "CardputerZero";
 const TARGET_REPO: &str = "packages";
@@ -19,12 +20,35 @@ struct DebMetadata {
     maintainer_email: String,
 }
 
+#[derive(serde::Serialize, Default)]
+struct StoreMeta {
+    title: String,
+    summary: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    locales: Option<serde_json::Value>,
+    categories: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    license: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_repo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    icon: Option<String>,
+    screenshots: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    permissions: Option<serde_json::Value>,
+}
+
 pub fn run(deb: Option<&Path>) -> Result<()> {
     // Check git and git-lfs are installed
     check_git_lfs_installed()?;
 
     let deb_path = resolve_deb(deb)?;
     println!("Package: {}", deb_path.display());
+
+    // Read app-builder.json for store metadata
+    let (store_meta, app_dir) = load_store_meta(&deb_path)?;
     println!();
 
     let token = auth::load_token()?;
@@ -145,9 +169,35 @@ pub fn run(deb: Option<&Path>) -> Result<()> {
         "{}_{}_{}.deb", meta.package, meta.version, meta.architecture
     )))?;
 
+    // Copy screenshots
+    let screenshots_dest = dest_dir.join("screenshots");
+    if !store_meta.screenshots.is_empty() {
+        std::fs::create_dir_all(&screenshots_dest)?;
+        for shot in &store_meta.screenshots {
+            let src = app_dir.join(shot);
+            if !src.exists() {
+                return Err(anyhow!("Screenshot not found: {}", src.display()));
+            }
+            let filename = src.file_name().unwrap();
+            std::fs::copy(&src, screenshots_dest.join(filename))?;
+        }
+    }
+
+    // Copy icon
+    if let Some(ref icon_path) = store_meta.icon {
+        let icon_src = app_dir.join(icon_path);
+        if icon_src.exists() {
+            std::fs::copy(&icon_src, dest_dir.join(icon_src.file_name().unwrap()))?;
+        }
+    }
+
+    // Generate meta.json
+    let meta_json = serde_json::to_string_pretty(&store_meta)?;
+    std::fs::write(dest_dir.join("meta.json"), &meta_json)?;
+
     // Add and commit
     print!("  → {} ", t!("publish.creating_commit"));
-    run_cmd_in(&tmp_dir, "git", &["add", &file_path_in_repo])?;
+    run_cmd_in(&tmp_dir, "git", &["add", &format!("pool/main/{}", meta.package)])?;
     run_cmd_in(&tmp_dir, "git", &[
         "commit", "-m", &format!("publish: {} {} ({})", meta.package, meta.version, meta.architecture),
     ])?;
@@ -225,6 +275,81 @@ fn resolve_deb(deb: Option<&Path>) -> Result<PathBuf> {
         }
     }
     Err(anyhow!("no .deb file found. Specify with --deb <path>"))
+}
+
+fn load_store_meta(deb_path: &Path) -> Result<(StoreMeta, PathBuf)> {
+    // Look for app-builder.json in current dir or deb's parent dir
+    let search_dirs = [
+        std::env::current_dir().unwrap_or_default(),
+        deb_path.parent().unwrap_or(Path::new(".")).to_path_buf(),
+    ];
+
+    for dir in &search_dirs {
+        let manifest_path = dir.join("app-builder.json");
+        if manifest_path.exists() {
+            let content = std::fs::read_to_string(&manifest_path)
+                .context("reading app-builder.json")?;
+            let raw: serde_json::Value = serde_json::from_str(&content)
+                .context("parsing app-builder.json")?;
+
+            if let Some(store) = raw.get("store") {
+                let meta = StoreMeta {
+                    title: raw.get("app_name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    summary: store.get("summary")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    description: store.get("description")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    locales: store.get("locales").cloned(),
+                    categories: store.get("categories")
+                        .and_then(|v| v.as_array())
+                        .map(|a| a.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                        .unwrap_or_default(),
+                    license: store.get("license")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    source_repo: store.get("source_repo")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    icon: store.get("icon")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    screenshots: store.get("screenshots")
+                        .and_then(|v| v.as_array())
+                        .map(|a| a.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                        .unwrap_or_default(),
+                    permissions: store.get("permissions").cloned(),
+                };
+
+                // Validate screenshots exist
+                if meta.screenshots.is_empty() {
+                    return Err(anyhow!(
+                        "No screenshots defined in app-builder.json store.screenshots.\n  \
+                         Add at least one 320x170 screenshot to publish.\n  \
+                         Use --no-screenshot to skip (not recommended)."
+                    ));
+                }
+
+                return Ok((meta, dir.clone()));
+            } else {
+                return Err(anyhow!(
+                    "app-builder.json found but missing \"store\" section.\n  \
+                     Add a \"store\" field with title, summary, categories, screenshots, etc.\n  \
+                     See: https://github.com/m5stack/CardputerZero-AppBuilder#publishing"
+                ));
+            }
+        }
+    }
+
+    Err(anyhow!(
+        "app-builder.json not found in current directory.\n  \
+         Run `czdev publish` from your app's project directory."
+    ))
 }
 
 fn check_desktop(deb: &Path) -> Result<bool> {
