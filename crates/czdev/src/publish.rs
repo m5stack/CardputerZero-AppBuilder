@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Context, Result};
-use base64::Engine;
 use rust_i18n::t;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
@@ -106,12 +105,13 @@ pub fn run(deb: Option<&Path>) -> Result<()> {
     let base_sha = gh.get_ref_sha(&push_owner, &push_repo, "heads/main")?;
     let (_, base_tree_sha) = gh.get_commit(&push_owner, &push_repo, &base_sha)?;
 
-    // Upload blob
+    // Upload via LFS + create pointer blob
     print!("  → {} ({:.1} MB)... ", t!("publish.uploading_blob"), size_mb);
     let file_bytes = std::fs::read(&deb_path).context("reading deb file")?;
     let sha256_hash = hex_sha256(&file_bytes);
-    let content_b64 = base64::engine::general_purpose::STANDARD.encode(&file_bytes);
-    let blob_sha = gh.create_blob(&push_owner, &push_repo, &content_b64)?;
+    let blob_sha = gh.upload_lfs_and_create_pointer_blob(
+        &push_owner, &push_repo, &file_bytes, &sha256_hash,
+    )?;
     println!("{} (sha: {})", t!("publish.done"), &blob_sha[..8]);
 
     // Create tree

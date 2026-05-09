@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use base64;
 use reqwest::blocking::Client;
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use serde::{Deserialize, Serialize};
@@ -344,6 +345,124 @@ impl GitHubClient {
             .context("create PR status")?
             .json()
             .context("parsing PR")
+    }
+
+    /// Upload a file via Git LFS batch API, then create a blob with the LFS pointer.
+    /// Returns the blob SHA (of the pointer, not the file content).
+    pub fn upload_lfs_and_create_pointer_blob(
+        &self,
+        owner: &str,
+        repo: &str,
+        file_bytes: &[u8],
+        sha256_hex: &str,
+    ) -> Result<String> {
+        let size = file_bytes.len();
+        let oid = sha256_hex;
+
+        // Step 1: LFS batch API - request upload URL
+        let lfs_url = format!("https://github.com/{owner}/{repo}.git/info/lfs/objects/batch");
+        #[derive(serde::Serialize)]
+        struct LfsBatchRequest {
+            operation: String,
+            transfers: Vec<String>,
+            objects: Vec<LfsObject>,
+        }
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct LfsObject {
+            oid: String,
+            size: u64,
+        }
+        #[derive(serde::Deserialize)]
+        struct LfsBatchResponse {
+            objects: Vec<LfsBatchObject>,
+        }
+        #[derive(serde::Deserialize)]
+        struct LfsBatchObject {
+            oid: String,
+            actions: Option<LfsActions>,
+        }
+        #[derive(serde::Deserialize)]
+        struct LfsActions {
+            upload: Option<LfsAction>,
+            verify: Option<LfsAction>,
+        }
+        #[derive(serde::Deserialize)]
+        struct LfsAction {
+            href: String,
+            header: Option<std::collections::HashMap<String, String>>,
+        }
+
+        let batch_resp: LfsBatchResponse = self
+            .client
+            .post(&lfs_url)
+            .header(AUTHORIZATION, format!("Bearer {}", self.token))
+            .header(USER_AGENT, "czdev/0.1")
+            .header(ACCEPT, "application/vnd.git-lfs+json")
+            .header("Content-Type", "application/vnd.git-lfs+json")
+            .json(&LfsBatchRequest {
+                operation: "upload".to_string(),
+                transfers: vec!["basic".to_string()],
+                objects: vec![LfsObject {
+                    oid: oid.to_string(),
+                    size: size as u64,
+                }],
+            })
+            .send()
+            .context("LFS batch request")?
+            .error_for_status()
+            .context("LFS batch status")?
+            .json()
+            .context("parsing LFS batch response")?;
+
+        // Step 2: Upload the actual file if needed
+        if let Some(obj) = batch_resp.objects.first() {
+            if let Some(actions) = &obj.actions {
+                if let Some(upload) = &actions.upload {
+                    let mut req = self.client.put(&upload.href);
+                    if let Some(headers) = &upload.header {
+                        for (k, v) in headers {
+                            req = req.header(k.as_str(), v.as_str());
+                        }
+                    }
+                    req.header("Content-Type", "application/octet-stream")
+                        .body(file_bytes.to_vec())
+                        .send()
+                        .context("LFS upload")?
+                        .error_for_status()
+                        .context("LFS upload status")?;
+                }
+
+                // Step 3: Verify if required
+                if let Some(verify) = &actions.verify {
+                    let mut req = self.client.post(&verify.href);
+                    if let Some(headers) = &verify.header {
+                        for (k, v) in headers {
+                            req = req.header(k.as_str(), v.as_str());
+                        }
+                    }
+                    req.header("Content-Type", "application/vnd.git-lfs+json")
+                        .json(&LfsObject {
+                            oid: oid.to_string(),
+                            size: size as u64,
+                        })
+                        .send()
+                        .context("LFS verify")?
+                        .error_for_status()
+                        .context("LFS verify status")?;
+                }
+            }
+            // else: no actions means the object already exists in LFS storage
+        }
+
+        // Step 4: Create a git blob with the LFS pointer content
+        let pointer = format!(
+            "version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {size}\n"
+        );
+        let pointer_b64 = base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            pointer.as_bytes(),
+        );
+        self.create_blob(owner, repo, &pointer_b64)
     }
 
     pub fn get_file_content(&self, owner: &str, repo: &str, path: &str) -> Result<Vec<u8>> {
