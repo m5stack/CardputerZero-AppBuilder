@@ -12,12 +12,13 @@ pub fn run(package: &str, version: &str, arch: &str) -> Result<()> {
     let token = auth::load_token()?;
     let gh = GitHubClient::new(&token);
     let user = gh.get_user()?;
-    let verified_emails = gh.get_verified_emails()?;
 
     let noreply = format!("{}@users.noreply.github.com", user.login);
-    let mut all_emails = verified_emails;
-    if !all_emails.contains(&noreply) {
-        all_emails.push(noreply);
+    let mut all_emails = vec![noreply];
+    if let Some(ref email) = user.email {
+        if !email.is_empty() {
+            all_emails.push(email.clone());
+        }
     }
 
     let file_path = format!("pool/main/{}/{}_{}_{}. deb", package, package, version, arch);
