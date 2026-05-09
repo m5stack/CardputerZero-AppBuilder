@@ -145,6 +145,54 @@ cargo run -p czdev --release -- deploy \
     --deb path/to/my_app_arm64.deb
 ```
 
+### 8. Publishing to the AppStore
+
+```bash
+# Install czdev (one-time, or build from source: cargo build --release -p czdev)
+curl -fsSL https://github.com/m5stack/CardputerZero-AppBuilder/releases/latest/download/czdev-macos-aarch64 -o czdev
+chmod +x czdev && sudo mv czdev /usr/local/bin/
+
+# Login to GitHub (one-time)
+czdev login
+
+# Auto-bump patch version and publish
+czdev bump --deb build/my_app_1.0.0_arm64.deb    # → my_app_1.0.1_arm64.deb
+czdev publish --deb build/my_app_1.0.1_arm64.deb
+
+# Or publish directly (version in deb must be newer than existing)
+czdev publish --deb build/my_app_2.0.0_arm64.deb
+
+# Remove your own package
+czdev unpublish my_app --version 1.0.1
+```
+
+## Install czdev
+
+**Option A — Download prebuilt binary (recommended):**
+
+| Platform | Command |
+|----------|---------|
+| macOS Apple Silicon | `curl -fsSL https://github.com/m5stack/CardputerZero-AppBuilder/releases/latest/download/czdev-macos-aarch64 -o czdev && chmod +x czdev && sudo mv czdev /usr/local/bin/` |
+| macOS Intel | `curl -fsSL .../czdev-macos-x86_64 -o czdev && chmod +x czdev && sudo mv czdev /usr/local/bin/` |
+| Linux x86_64 | `curl -fsSL .../czdev-linux-x86_64 -o czdev && chmod +x czdev && sudo mv czdev /usr/local/bin/` |
+| Linux aarch64 | `curl -fsSL .../czdev-linux-aarch64 -o czdev && chmod +x czdev && sudo mv czdev /usr/local/bin/` |
+| Windows | Download `czdev-windows-x86_64.exe` from [Releases](https://github.com/m5stack/CardputerZero-AppBuilder/releases) |
+
+**Option B — Build from source:**
+
+```bash
+git clone --recursive git@github.com:m5stack/CardputerZero-AppBuilder.git
+cd CardputerZero-AppBuilder
+cargo build --release -p czdev
+# Binary at: target/release/czdev
+```
+
+**Option C — cargo install:**
+
+```bash
+cargo install --git https://github.com/m5stack/CardputerZero-AppBuilder czdev
+```
+
 ## CI Online Build
 
 1. Go to **Actions** > **Build DEB Package** > **Run workflow**

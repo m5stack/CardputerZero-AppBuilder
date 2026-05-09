@@ -1,5 +1,6 @@
 mod auth;
 mod build;
+mod bump;
 mod deploy;
 mod doctor;
 mod github;
@@ -73,6 +74,13 @@ enum Command {
     /// Remove stored GitHub credentials.
     Logout,
 
+    /// Show next version (patch bump) for a package based on published versions.
+    Bump {
+        /// Path to the .deb file. If omitted, searches ./build/*.deb
+        #[arg(long)]
+        deb: Option<PathBuf>,
+    },
+
     /// Publish a .deb package to the CardputerZero app store.
     Publish {
         /// Path to the .deb file. If omitted, searches ./build/*.deb
@@ -107,6 +115,7 @@ fn main() -> Result<()> {
         Command::Deploy { path, host, deb } => deploy::run(&path, host.as_deref(), deb.as_deref()),
         Command::Login => auth::login(),
         Command::Logout => auth::logout(),
+        Command::Bump { deb } => bump::run(deb.as_deref()),
         Command::Publish { deb } => publish::run(deb.as_deref()),
         Command::Unpublish {
             package,
