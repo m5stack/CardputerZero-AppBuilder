@@ -25,7 +25,7 @@ cargo run -p czdev --release -- run apps/applaunch/
 ### Hello CardputerZero (Example App)
 
 ```bash
-cargo run -p czdev --release -- run examples/key_echo
+cargo run -p czdev --release -- run examples/hello_cz
 ```
 
 ![Hello Example](docs/emu-hello.png)
@@ -59,7 +59,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ### 2. Clone with submodules
 
 ```bash
-git clone --recursive git@github.com:m5stack/CardputerZero-AppBuilder.git
+git clone --recursive https://github.com/m5stack/CardputerZero-AppBuilder
 cd CardputerZero-AppBuilder
 ```
 

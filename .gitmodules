@@ -1,8 +1,8 @@
 [submodule "emulator"]
 	path = emulator
-	url = git@github.com:eggfly/M5CardputerZero-Emulator.git
+	url = https://github.com/eggfly/M5CardputerZero-Emulator
 	branch = main
 [submodule "apps/nc2000"]
 	path = apps/nc2000
-	url = git@github.com:eggfly/CardputerZero-NC2000.git
+	url = https://github.com/eggfly/CardputerZero-NC2000
 	branch = ci-cd
