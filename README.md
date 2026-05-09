@@ -39,19 +39,28 @@ Get a 320x170 LVGL app running on your Mac or Linux machine in ~3 minutes — no
 ### 1. Prerequisites
 
 **macOS:**
+
 ```bash
 brew install cmake pkg-config sdl2 sdl2_image sdl2_mixer freetype
 ```
 
 **Linux (Debian/Ubuntu):**
+
 ```bash
 sudo apt install -y build-essential cmake pkg-config \
-    libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libfreetype-dev
+    libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libfreetype-dev libinput-dev
+```
+
+**Linux (Fedora/Red hat):**
+
+```bash
+sudo dnf install -y @development-libs @development-tools && sudo dnf install -y cmake pkgconf-pkg-config SDL2-devel SDL2_image-devel SDL2_mixer-devel freetype-devel libinput-devel
 ```
 
 **Windows:** MSYS2 MINGW64 shell. See [DESKTOP_DEV.md §4](docs/DESKTOP_DEV.md#4-windows-lvgl--emulator--known-issues-and-plan) for Windows-specific notes.
 
 You also need a recent Rust toolchain (for `czdev`):
+
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
@@ -64,6 +73,7 @@ cd CardputerZero-AppBuilder
 ```
 
 If you already cloned without `--recursive`:
+
 ```bash
 git submodule update --init --recursive
 ```
@@ -83,6 +93,7 @@ cargo run -p czdev --release -- run examples/hello_cz
 ```
 
 On first run this will:
+
 1. Build the emulator (once, cached in `emulator/build/`).
 2. Build the app into `.czdev/build/`.
 3. Stage the resulting shared library into the emulator's `apps/` directory.
@@ -202,7 +213,7 @@ ssh pi@<device-ip> "sudo dpkg -i /tmp/<package>_arm64.deb"
 
 The CI pipeline runs on x86_64 and **cross-compiles** to ARM64 (aarch64) using the `aarch64-linux-gnu-` toolchain — the same approach used by the [M5Stack_Linux_Libs](https://github.com/m5stack/M5Stack_Linux_Libs) SDK.
 
-```
+```text
 User Input (repo URL)
         │
         ▼
@@ -220,7 +231,7 @@ User Input (repo URL)
 
 Generated packages follow the [APPLaunch packaging conventions](https://github.com/dianjixz/M5CardputerZero-UserDemo/blob/main/doc/APPLaunch-App-%E6%89%93%E5%8C%85%E6%8C%87%E5%8D%97.md):
 
-```
+```text
 <package>.deb
 ├── DEBIAN/
 │   ├── control
