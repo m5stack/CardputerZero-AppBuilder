@@ -1,10 +1,14 @@
+mod auth;
 mod build;
 mod deploy;
 mod doctor;
+mod github;
 mod list;
 mod manifest;
 mod paths;
+mod publish;
 mod run;
+mod unpublish;
 mod watch;
 
 use anyhow::Result;
@@ -62,6 +66,31 @@ enum Command {
         #[arg(long)]
         deb: Option<PathBuf>,
     },
+
+    /// Authenticate with GitHub (device flow).
+    Login,
+
+    /// Remove stored GitHub credentials.
+    Logout,
+
+    /// Publish a .deb package to the CardputerZero app store.
+    Publish {
+        /// Path to the .deb file. If omitted, searches ./build/*.deb
+        #[arg(long)]
+        deb: Option<PathBuf>,
+    },
+
+    /// Create a PR to remove a published package (you can only remove your own).
+    Unpublish {
+        /// Package name to remove
+        package: String,
+        /// Version to remove
+        #[arg(long)]
+        version: String,
+        /// Architecture (default: arm64)
+        #[arg(long, default_value = "arm64")]
+        arch: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -76,5 +105,13 @@ fn main() -> Result<()> {
         Command::Run { path } => run::run_app(&path),
         Command::Watch { path } => watch::run(&path),
         Command::Deploy { path, host, deb } => deploy::run(&path, host.as_deref(), deb.as_deref()),
+        Command::Login => auth::login(),
+        Command::Logout => auth::logout(),
+        Command::Publish { deb } => publish::run(deb.as_deref()),
+        Command::Unpublish {
+            package,
+            version,
+            arch,
+        } => unpublish::run(&package, &version, &arch),
     }
 }
