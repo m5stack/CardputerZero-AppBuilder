@@ -3,7 +3,7 @@
   "version": "0.1",
   "app_name": "APPLaunch",
   "bin_name": "APPLaunch",
-  "description": "M5CardputerZero APPLaunch home — built by the emulator's own CMake from the UserDemo submodule (no UserDemo edits).",
+  "description": "M5CardputerZero APPLaunch home — built by the emulator's own CMake from the Launcher submodule.",
   "runtime": "prebuilt-emulator-app",
   "lvgl_version": "9.5",
   "caps": ["keyboard", "network", "filesystem", "pty", "process"]

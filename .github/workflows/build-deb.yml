@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       repo_url:
-        description: "Git repository URL (HTTP, e.g. https://github.com/eggfly/M5CardputerZero-UserDemo.git)"
+        description: "Git repository URL (HTTP, e.g. https://github.com/CardputerZero/M5CardputerZero-Launcher.git)"
         required: true
         type: string
       branch:
