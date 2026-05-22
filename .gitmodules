@@ -4,5 +4,5 @@
 	branch = main
 [submodule "apps/nc2000"]
 	path = apps/nc2000
-	url = https://github.com/CardputerZero/CardputerZero-NC2000.git
+	url = https://github.com/eggfly/CardputerZero-NC2000.git
 	branch = ci-cd
