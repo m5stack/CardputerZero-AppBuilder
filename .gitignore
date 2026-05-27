@@ -15,6 +15,10 @@ dist-ssr
 # Rust workspace build output
 target/
 
+# Python
+__pycache__/
+*.pyc
+
 # czdev per-app build output
 **/.czdev/
 examples/*/build/

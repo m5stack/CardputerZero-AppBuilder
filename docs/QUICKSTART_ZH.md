@@ -21,10 +21,12 @@ sudo apt install -y build-essential cmake pkg-config \
 [DESKTOP_DEV.md §4](DESKTOP_DEV.md#4-windows-lvgl--emulator--known-issues-and-plan)。
 目前 macOS / Linux 流程是完整可用的。
 
-还需要 Rust 工具链（用于编译 `czdev`）：
+还需要 Rust 工具链（用于模拟器相关命令）：
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
+
+> **提示：** 发布命令（`./czdev login/publish/unpublish/bump`）只需要 Python 3，无需 Rust。
 
 ## 2. 克隆仓库（含子模块）
 

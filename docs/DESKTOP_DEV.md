@@ -160,10 +160,12 @@ LVGL desktop-dev loop small and shippable:
 
 ```
 CardputerZero-AppBuilder/
+├── czdev                        # Python wrapper script (login/publish/unpublish/bump)
 ├── emulator/                    # git submodule → eggfly/M5CardputerZero-Emulator
 ├── crates/
 │   └── czdev/                   # Rust CLI: list / build / run / watch / deploy / doctor
-├── src-tauri/                   # existing Tauri shell (unchanged)
+├── scripts/
+│   └── czdev/                   # Python package: auth, publish, unpublish, bump, github_client
 ├── sdk/
 │   ├── include/
 │   │   ├── cz_app.h             # app ABI (§2)

@@ -21,10 +21,12 @@ sudo apt install -y build-essential cmake pkg-config \
 [DESKTOP_DEV.md §4](DESKTOP_DEV.md#4-windows-lvgl--emulator--known-issues-and-plan)
 を参照。現状 macOS / Linux のワークフローが完全にサポートされています。
 
-Rust ツールチェーン（`czdev` のビルドに必要）：
+Rust ツールチェーン（エミュレータコマンドに必要）：
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
+
+> **注意：** パブリッシュコマンド（`./czdev login/publish/unpublish/bump`）は Python 3 のみで動作し、Rust は不要です。
 
 ## 2. リポジトリのクローン（サブモジュール含む）
 

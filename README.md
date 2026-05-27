@@ -51,10 +51,12 @@ sudo apt install -y build-essential cmake pkg-config \
 
 **Windows:** MSYS2 MINGW64 shell. See [DESKTOP_DEV.md §4](docs/DESKTOP_DEV.md#4-windows-lvgl--emulator--known-issues-and-plan) for Windows-specific notes.
 
-You also need a recent Rust toolchain (for `czdev`):
+You also need a recent Rust toolchain (for the emulator commands in `czdev`):
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
+
+> **Note:** Publishing commands (`./czdev login/publish/unpublish/bump`) only require Python 3 — no Rust needed.
 
 ### 2. Clone with submodules
 
@@ -147,19 +149,23 @@ cargo run -p czdev --release -- deploy \
 
 ### 8. Publishing to the AppStore
 
+Publishing uses the Python-based `czdev` wrapper (no Rust toolchain needed):
+
 ```bash
 # Login to GitHub (one-time)
-./target/release/czdev login
+./czdev login
 
 # Check next version
-./target/release/czdev bump --deb build/my_app_1.0.0_arm64.deb
+./czdev bump --deb build/my_app_1.0.0_arm64.deb
 
 # Publish (version in deb must be newer than existing)
-./target/release/czdev publish --deb build/my_app_1.0.1_arm64.deb
+./czdev publish --deb build/my_app_1.0.1_arm64.deb
 
 # Remove your own package
-./target/release/czdev unpublish my_app --version 1.0.1
+./czdev unpublish my_app --version 1.0.1
 ```
+
+Requirements: Python 3, `git`, `git-lfs`, `dpkg-deb`.
 
 #### Publish Workflow
 
@@ -215,20 +221,23 @@ cargo run -p czdev --release -- deploy \
 
 ## Install czdev
 
-**Option A — Build from source (recommended):**
+`czdev` is split into two parts:
+
+**Publishing commands** (`login`, `logout`, `bump`, `publish`, `unpublish`) — pure Python, no compilation needed:
 
 ```bash
 git clone --recursive git@github.com:m5stack/CardputerZero-AppBuilder.git
 cd CardputerZero-AppBuilder
-cargo build --release -p czdev
-# Binary at: target/release/czdev
+./czdev --help    # works immediately with Python 3
 ```
 
-Then use directly: `./target/release/czdev <command>`
+**Emulator commands** (`doctor`, `list`, `build`, `run`, `watch`, `deploy`) — require Rust toolchain:
 
-**Option B — Download prebuilt binary:**
-
-Download from [Releases](https://github.com/m5stack/CardputerZero-AppBuilder/releases) for your platform (macOS/Linux/Windows).
+```bash
+cargo build --release -p czdev
+# Binary at: target/release/czdev
+cargo run -p czdev --release -- run examples/hello_cz
+```
 
 ## CI Online Build
 

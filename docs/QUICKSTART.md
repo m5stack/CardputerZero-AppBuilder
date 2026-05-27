@@ -25,10 +25,13 @@ sudo apt install -y build-essential cmake pkg-config \
 for the Windows-specific work still in progress — the mac/Linux loop below is
 what's supported end-to-end today.
 
-You also need a recent Rust toolchain (for `czdev`). If you don't have one:
+You also need a recent Rust toolchain (for the emulator commands). If you don't have one:
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
+
+> **Note:** Publishing commands (`./czdev login/publish/unpublish/bump`) only
+> require Python 3 — no Rust toolchain needed.
 
 ## 2. Clone with submodules
 
