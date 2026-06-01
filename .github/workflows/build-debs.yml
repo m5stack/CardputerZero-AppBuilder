@@ -1,0 +1,113 @@
+name: Build APPLaunch .deb packages
+
+on:
+  push:
+    branches: [main, ci/**]
+    paths:
+      - '**/*'
+      - '!**/*.md'
+      - '!CHECKLIST.md'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write  # needed to attach assets to a release on tag
+
+jobs:
+  discover:
+    name: Discover packageable examples
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: find
+        shell: bash
+        run: |
+          set -euo pipefail
+          # List directories that have packaging/meta.env
+          mapfile -t DIRS < <(find . -mindepth 3 -maxdepth 3 -path '*/packaging/meta.env' -printf '%h\n' \
+              | sed 's|^\./||; s|/packaging$||' | sort)
+          if [ "${#DIRS[@]}" -eq 0 ]; then
+              echo "matrix={\"include\":[]}" >>"$GITHUB_OUTPUT"
+              exit 0
+          fi
+          # Build JSON include list
+          items=""
+          for d in "${DIRS[@]}"; do
+              name=$(basename "$d")
+              items="$items,{\"dir\":\"$d\",\"name\":\"$name\"}"
+          done
+          items="${items#,}"
+          echo "matrix={\"include\":[$items]}" >>"$GITHUB_OUTPUT"
+          echo "Discovered ${#DIRS[@]} packageable examples:"
+          printf '  - %s\n' "${DIRS[@]}"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: discover
+    if: ${{ needs.discover.outputs.matrix != '{"include":[]}' }}
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install base build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              build-essential pkg-config cmake dpkg-dev fakeroot \
+              ca-certificates curl git
+
+      - name: Install per-example deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Each example may ship packaging/ci-deps.sh; if present, run it.
+          if [ -x "${{ matrix.dir }}/packaging/ci-deps.sh" ]; then
+              sudo "${{ matrix.dir }}/packaging/ci-deps.sh"
+          fi
+
+      - name: Install Rust (if example needs it)
+        if: ${{ hashFiles(format('{0}/Cargo.toml', matrix.dir)) != '' }}
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Build .deb
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/pack-deb.sh "${{ matrix.dir }}" --output-dir "$GITHUB_WORKSPACE/dist"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.name }}
+          path: dist/*.deb
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Attach .deb to release
+    if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect .deb
+        run: |
+          mkdir -p dist
+          find artifacts -name '*.deb' -exec cp -v {} dist/ \;
+          ls -la dist/
+      - name: Upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.deb
