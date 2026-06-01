@@ -33,7 +33,7 @@ if [[ -n "$ONLY" ]]; then
 else
     while IFS= read -r meta; do
         TARGETS+=("$(dirname "$(dirname "$meta")")")
-    done < <(find "$REPO_ROOT" -mindepth 3 -maxdepth 3 -path "*/packaging/meta.env" | sort)
+    done < <(find "$REPO_ROOT" -mindepth 3 -maxdepth 4 -path "*/packaging/meta.env" | sort)
 fi
 
 if [[ ${#TARGETS[@]} -eq 0 ]]; then
