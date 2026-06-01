@@ -1,4 +1,6 @@
 """Framebuffer helpers: open /dev/fb0, query vinfo/finfo, blit PIL RGB to RGB565."""
+import os
+
 
 import fcntl
 import mmap
@@ -37,7 +39,8 @@ def _read_finfo(fd):
     return {"smem_len": fields[2], "line_length": fields[8]}
 
 
-def open_fb(path="/dev/fb0"):
+def open_fb(path=None):
+    if path is None: path = os.environ.get("APPLAUNCH_LINUX_FBDEV_DEVICE", "/dev/fb0")
     fd = os.open(path, os.O_RDWR)
     try:
         vinfo = _read_vinfo(fd)

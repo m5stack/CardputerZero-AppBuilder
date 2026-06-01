@@ -17,7 +17,7 @@ import fcntl, os, struct
 FBIOGET_VSCREENINFO = 0x4600
 FBIOGET_FSCREENINFO = 0x4602
 try:
-    fd = os.open("/dev/fb0", os.O_RDWR)
+    fd = os.open(os.environ.get("APPLAUNCH_LINUX_FBDEV_DEVICE", "/dev/fb0"), os.O_RDWR)
 except OSError:
     raise SystemExit(0)
 try:
@@ -59,7 +59,7 @@ sleep 0.5
 # when using the Python blitter path. ffmpeg's fbdev muxer also works
 # for group 'video' writers, so drop sudo here too.
 ffmpeg -loglevel error -f x11grab -video_size 320x170 -framerate 15 -i :1 \
-  -pix_fmt rgb565le -f fbdev /dev/fb0 &
+  -pix_fmt rgb565le -f fbdev ${APPLAUNCH_LINUX_FBDEV_DEVICE:-/dev/fb0} &
 FFMPEG_PID=$!
 
 python3 hello_tk.py

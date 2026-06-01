@@ -22,7 +22,7 @@ FBIOGET_VSCREENINFO = 0x4600
 FBIOGET_FSCREENINFO = 0x4602
 
 
-def _blank_fb(path="/dev/fb0"):
+def _blank_fb(path=None):
     """Zero /dev/fb0 on exit so APPLaunch's resumed screen shows without
     waiting for a left/right key to trigger repaint."""
     try:
@@ -55,7 +55,7 @@ def _start_fb_mirror(display, fps=15):
     from PIL import ImageGrab
     import fb_blit
 
-    mm, vinfo, line_length, fd = fb_blit.open_fb("/dev/fb0")
+    mm, vinfo, line_length, fd = fb_blit.open_fb()
     period = 1.0 / fps
 
     def loop():

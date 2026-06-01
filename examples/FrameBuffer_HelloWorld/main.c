@@ -106,8 +106,10 @@ static int open_input_device(void) {
 }
 
 int main(void) {
-    int fbfd = open("/dev/fb0", O_RDWR);
-    if (fbfd < 0) { perror("open /dev/fb0"); return 1; }
+    const char *fbdev = getenv("APPLAUNCH_LINUX_FBDEV_DEVICE");
+    if (!fbdev) fbdev = "/dev/fb0";
+    int fbfd = open(fbdev, O_RDWR);
+    if (fbfd < 0) { perror(fbdev); return 1; }
 
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
