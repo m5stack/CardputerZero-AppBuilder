@@ -1,0 +1,6 @@
+build/
+Makefile
+*.o
+moc_*.cpp
+hello_qt
+.qmake.stash

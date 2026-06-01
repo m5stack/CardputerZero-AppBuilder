@@ -1,0 +1,28 @@
+# Ubuntu 24.04 aarch64 — same arch as CM0 when run on Apple Silicon.
+# Used by run-in-docker.sh and smoke-deb.sh.
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Etc/UTC \
+    DISPLAY=:99 \
+    PATH="/work/scripts:$PATH"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential pkg-config cmake dpkg-dev fakeroot ca-certificates \
+        curl git sudo \
+        xvfb xauth x11-apps xdotool imagemagick ffmpeg \
+        libsdl2-dev libsdl2-ttf-dev libsdl2-mixer-dev \
+        libinput-dev libudev-dev libxkbcommon-dev libseat-dev \
+        qtbase5-dev libqt5widgets5 \
+        python3 python3-pip python3-pil python3-pil.imagetk \
+        python3-numpy python3-evdev python3-pyqt5 python3-tk \
+        iw iproute2 procps alsa-utils fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
+# Provide a writable file that plays the role of /dev/fb0 inside the container.
+# The example's ioctls won't work, but examples that honor $FB_DEVICE can point
+# here. A companion helper (xvfb-to-fb.py) periodically grabs Xvfb and writes
+# RGB565 bytes to this file so something is always "visible" for inspection.
+RUN dd if=/dev/zero of=/fbfile bs=1 count=$((320*170*2)) && chmod 0666 /fbfile
+
+WORKDIR /work

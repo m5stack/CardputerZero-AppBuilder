@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+for grp in video input; do
+    if getent group "$grp" >/dev/null && id -u pi >/dev/null 2>&1; then
+        usermod -aG "$grp" pi || true
+    fi
+done
+exit 0

@@ -1,0 +1,15 @@
+[package]
+name = "rust_fb_hello"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+framebuffer = "0.3"
+embedded-graphics = "0.8"
+evdev = "0.12"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

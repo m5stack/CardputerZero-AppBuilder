@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name={{APP_NAME}}
+Exec={{APP_EXEC}}
+Terminal={{APP_TERMINAL}}
+Sysplause={{APP_SYSPLAUSE}}
+Icon={{APP_ICON}}
+Type=Application
+Categories=Game;Emulator;

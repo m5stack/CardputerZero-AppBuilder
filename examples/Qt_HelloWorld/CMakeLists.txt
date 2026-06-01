@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.16)
+project(hello_qt)
+find_package(Qt5 COMPONENTS Widgets REQUIRED)
+add_executable(hello_qt main.cpp)
+target_link_libraries(hello_qt Qt5::Widgets)
+set(CMAKE_AUTOMOC ON)

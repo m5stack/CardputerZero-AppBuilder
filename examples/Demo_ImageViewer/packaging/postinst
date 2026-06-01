@@ -1,0 +1,42 @@
+#!/bin/sh
+set -e
+
+# Add pi to video/input groups so viewer.py can open /dev/fb0 and
+# read the evdev keypad without sudo. Uses gpasswd -a (more portable
+# than usermod -aG across Debian/Raspbian/Buildroot variants).
+#
+# Group changes only apply to new sessions. APPLaunch runs as a systemd
+# service; the installer (deploy.sh) is expected to:
+#     systemctl restart APPLaunch.service
+# after installing this .deb so the new supplementary groups take effect.
+
+USER_NAME=pi
+if ! id -u "$USER_NAME" >/dev/null 2>&1; then
+    exit 0
+fi
+
+need_restart=0
+for grp in video input; do
+    if ! getent group "$grp" >/dev/null; then
+        continue
+    fi
+    if id -nG "$USER_NAME" | tr ' ' '\n' | grep -qx "$grp"; then
+        # Already a member; nothing to do.
+        continue
+    fi
+    if command -v gpasswd >/dev/null 2>&1; then
+        gpasswd -a "$USER_NAME" "$grp" >/dev/null || true
+    else
+        usermod -aG "$grp" "$USER_NAME" || true
+    fi
+    need_restart=1
+done
+
+if [ "$need_restart" = 1 ]; then
+    echo "demo-imgview: added $USER_NAME to video/input groups."
+    echo "demo-imgview: restart APPLaunch.service so the new groups take effect:"
+    echo "    systemctl restart APPLaunch.service"
+    # deploy.sh already invokes this; keep non-fatal for fresh-install flows.
+fi
+
+exit 0
