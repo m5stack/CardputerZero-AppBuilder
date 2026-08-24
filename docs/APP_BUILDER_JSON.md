@@ -28,16 +28,21 @@ roles:
 
   // ── AppStore listing (used by `czdev publish` + web portal) ──────
   "store": {
-    "summary":     "One-line summary",       // shown in lists
-    "description": "Longer detail-page text",// optional; falls back to summary
-    "categories":  ["Games"],                // optional; up to a few tags
-    "screenshots": ["screenshots/main.png"], // >=1 required; 320×170 PNG(s)
-    "icon":        "packaging/icon.png",      // optional; square PNG
-    "license":     "MIT",                     // optional
-    "source_repo": "https://github.com/you/my_app", // optional
-    "author":      { "github": "you" },       // optional; defaults to uploader
-    "permissions": [],                        // optional; declared permissions
-    "locales":     {}                         // optional; localized title/summary
+    "summary":     "One-line summary",        // required; ≤80 chars
+    "description": "Longer detail-page text", // recommended
+    "categories":  ["Games"],                 // required; 1–2 from the fixed enum
+    "screenshots": ["screenshots/main.png"],  // required; 1–6 × 320×170 PNG
+    "icon":        "packaging/icon.png",      // required; square PNG 128–512 (256 recommended)
+    "license":     "MIT",                     // required; SPDX id
+    "source_repo": "https://github.com/you/my_app", // recommended
+    "author":      { "github": "you", "display_name": "Your Name" }, // display_name required
+    "share_code":  "MYAP",                    // required; 4 alphanumerics, unique store-wide
+    "permissions": {                          // required; exactly these 7 booleans
+      "camera": false, "microphone": false, "imu": false, "network": false,
+      "additional_hardware": false, "background_service": false,
+      "external_display": false
+    },
+    "locales":     {}                         // recommended; localized title/summary
   },
 
   // ── Legacy desktop-emulator fields (optional, no longer consumed) ─
@@ -62,23 +67,40 @@ roles:
 
 ## Store listing — `store`
 
-Read by `czdev publish` and the web portal to build the AppStore page. At
-least one 320×170 screenshot is required to publish.
+Read by `czdev publish` and the web portal to build the AppStore page. The
+store enforces this policy on every submission (czdev pre-checks it locally
+with the same script CI runs, so a bad manifest fails before anything is
+uploaded):
 
 | Field | Required | Type | Notes |
 |---|---|---|---|
-| `store.summary` | recommended | string | one-line summary shown in lists |
-| `store.description` | no | string | detail-page text; falls back to `summary` |
-| `store.categories` | no | string[] | category tags |
-| `store.screenshots` | **yes** | string[] | ≥1 path, relative to the app dir; **320×170** PNG(s) |
-| `store.icon` | no | string | square PNG path (else the deb's icon is used) |
-| `store.license` | no | string | SPDX id, e.g. `MIT` |
-| `store.source_repo` | no | string | public source URL |
-| `store.author` | no | object | e.g. `{ "github": "you" }`; defaults to the uploader |
-| `store.permissions` | no | string[] | declared permissions (metadata) |
-| `store.locales` | no | object | localized `title` / `summary` per locale |
+| `store.summary` | **yes** | string | one-line summary shown in lists; ≤80 chars |
+| `store.description` | recommended | string | detail-page text |
+| `store.categories` | **yes** | string[] | 1–2 from the fixed enum below |
+| `store.screenshots` | **yes** | string[] | 1–6 paths, relative to the app dir; **320×170** PNG(s) |
+| `store.icon` | **yes** | string | square PNG path, 128–512 px (256 recommended) |
+| `store.license` | **yes** | string | SPDX id, e.g. `MIT` |
+| `store.source_repo` | recommended | string | public source URL (http/https) |
+| `store.author` | **yes** | object | `{ "github": "you", "display_name": "Your Name" }` — `display_name` is what the store shows |
+| `store.share_code` | **yes** | string | 4 letters/digits, unique across the store; users type it to jump to your app |
+| `store.permissions` | **yes** | object | exactly 7 booleans: `camera`, `microphone`, `imu`, `network`, `additional_hardware`, `background_service`, `external_display` |
+| `store.locales` | recommended | object | localized `title` / `summary` per locale (`zh-CN`, `ja`, …) |
 
-The store title comes from the top-level `app_name`.
+Categories enum: `System Tools`, `Development`, `Hardware & IoT`, `Security`,
+`Radio & Comms`, `AI`, `Creative & Office`, `Media`, `Games`, `Emulators`,
+`Education`, `Lifestyle`, `Other`.
+
+The store title comes from the top-level `app_name` and must be unique across
+the store (case- and whitespace-insensitive).
+
+When updating a published app, fields you leave out keep their published
+values (`czdev publish` merges into the existing `meta.json` — the pinned
+`uuid` and an already-assigned `share_code` survive automatically).
+
+**First release of a new app** is not auto-merged: after the PR is created,
+post a short video of the app running on a real device in the PR comments;
+a maintainer merges it after watching. Version updates merge automatically
+once validation passes.
 
 ## Legacy desktop-emulator fields
 
