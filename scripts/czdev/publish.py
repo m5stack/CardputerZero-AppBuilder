@@ -87,6 +87,12 @@ def run(deb: Optional[str] = None):
     # 5. Check version is newer than existing
     check_version_newer(meta)
 
+    # 6. Build the meta.json that will be committed and pre-check it against
+    #    the store's own policy script BEFORE uploading anything, so a
+    #    submission the CI would reject fails right here with the same wording.
+    meta_out = build_merged_meta(store_meta, meta, user)
+    precheck_store_meta(meta_out, app_dir, store_meta, meta["package"])
+
     # Determine target: direct push or fork
     perm = gh.check_permission(TARGET_OWNER, TARGET_REPO)
     if perm >= Permission.WRITE:
@@ -179,23 +185,8 @@ def run(deb: Optional[str] = None):
                 shutil.copy2(icon_src, dest_dir / icon_src.name)
 
         # meta.json + release manifest (the binary stays in the buffer release).
-        # Asset paths are rewritten to the pool layout the files were just
-        # copied into (icon at <pkg-dir>/<basename>, screenshots under
-        # <pkg-dir>/screenshots/<basename>) — the app-builder.json values are
-        # source-repo relative and would 404 when the store resolves them
-        # against pool/main/<pkg>/.
-        meta_out = dict(store_meta)
-        if meta_out.get("icon"):
-            meta_out["icon"] = Path(meta_out["icon"]).name
-        if meta_out.get("screenshots"):
-            meta_out["screenshots"] = [f"screenshots/{Path(s).name}" for s in meta_out["screenshots"]]
-        if not isinstance(meta_out.get("author"), dict) or not meta_out.get("author"):
-            display_name = meta["maintainer"].split("<")[0].strip()
-            meta_out["author"] = {
-                "github": user.login,
-                "display_name": display_name or user.login,
-            }
-        (dest_dir / "meta.json").write_text(json.dumps(meta_out, indent=2, ensure_ascii=False))
+        # meta_out was built and pre-checked before the upload.
+        (dest_dir / "meta.json").write_text(json.dumps(meta_out, indent=2, ensure_ascii=False) + "\n")
         (dest_dir / manifest_name).write_text(json.dumps(manifest, indent=2) + "\n")
 
         print("  → Creating commit... ", end="", flush=True)
@@ -284,18 +275,10 @@ def load_store_meta(deb_path: str) -> tuple:
                 "categories": store.get("categories", []),
                 "screenshots": store.get("screenshots", []),
             }
-            if store.get("description"):
-                meta["description"] = store["description"]
-            if store.get("locales"):
-                meta["locales"] = store["locales"]
-            if store.get("license"):
-                meta["license"] = store["license"]
-            if store.get("source_repo"):
-                meta["source_repo"] = store["source_repo"]
-            if store.get("icon"):
-                meta["icon"] = store["icon"]
-            if store.get("permissions"):
-                meta["permissions"] = store["permissions"]
+            for key in ("description", "locales", "license", "source_repo",
+                        "icon", "permissions", "share_code"):
+                if store.get(key):
+                    meta[key] = store[key]
             if isinstance(store.get("author"), dict):
                 meta["author"] = store["author"]
 
@@ -309,6 +292,105 @@ def load_store_meta(deb_path: str) -> tuple:
     print("app-builder.json not found in current directory.", file=sys.stderr)
     print("  Run `czdev publish` from your app's project directory.", file=sys.stderr)
     sys.exit(1)
+
+
+RAW_BASE = f"https://raw.githubusercontent.com/{TARGET_OWNER}/{TARGET_REPO}/main"
+
+
+def fetch_url(url: str, timeout: int = 15) -> Optional[bytes]:
+    try:
+        return urllib.request.urlopen(urllib.request.Request(url), timeout=timeout).read()
+    except Exception:
+        return None
+
+
+def build_merged_meta(store_meta: dict, deb_meta: dict, user) -> dict:
+    """The meta.json to publish: the already-published metadata as the base,
+    the app-builder.json store section on top.
+
+    Merging matters: fields the store section does not carry — most notably
+    the uuid the registry pinned, or a share_code assigned in an earlier
+    backfill — must survive an update instead of being wiped by a rewrite.
+    Asset paths are rewritten to the pool layout the files are copied into
+    (icon at <pkg-dir>/<basename>, screenshots under <pkg-dir>/screenshots/) —
+    the app-builder.json values are source-repo relative and would 404 when
+    the store resolves them against pool/main/<pkg>/.
+    """
+    merged = {}
+    published = fetch_url(f"{RAW_BASE}/pool/main/{deb_meta['package']}/meta.json")
+    if published:
+        try:
+            merged = json.loads(published.decode("utf-8"))
+        except Exception:
+            merged = {}
+
+    update = dict(store_meta)
+    if update.get("icon"):
+        update["icon"] = Path(update["icon"]).name
+    if update.get("screenshots"):
+        update["screenshots"] = [f"screenshots/{Path(s).name}" for s in update["screenshots"]]
+    author = update.pop("author", None)
+    for k, v in update.items():
+        if v not in (None, "", [], {}):
+            merged[k] = v
+    merged_author = dict(merged.get("author") or {})
+    if isinstance(author, dict):
+        merged_author.update({k: v for k, v in author.items() if v})
+    merged_author["github"] = user.login
+    if not merged_author.get("display_name"):
+        display_name = deb_meta["maintainer"].split("<")[0].strip()
+        merged_author["display_name"] = display_name or user.login
+    merged["author"] = merged_author
+    return merged
+
+
+def precheck_store_meta(meta_out: dict, app_dir: str, store_meta: dict, pkg: str):
+    """Run the store's own metadata policy locally before uploading anything.
+
+    Uses the exact script CI runs (fetched from the packages repo), staged
+    against a temporary pool/main/<pkg>/ layout, so the verdict and the wording
+    match what the PR would get. Uniqueness needs the whole pool and is left
+    to CI. If the script cannot be fetched (offline), the pre-check is skipped
+    and CI remains the authority.
+    """
+    script = fetch_url(f"{RAW_BASE}/.github/scripts/store_meta_policy.py")
+    if not script:
+        print("  ⚠ could not fetch store_meta_policy.py — skipping local pre-check (CI will validate)")
+        return
+
+    stage = Path(tempfile.mkdtemp(prefix="czdev-precheck-"))
+    try:
+        pkg_dir = stage / pkg
+        (pkg_dir / "screenshots").mkdir(parents=True)
+        (pkg_dir / "meta.json").write_text(json.dumps(meta_out, ensure_ascii=False))
+        for shot in store_meta.get("screenshots") or []:
+            src = Path(app_dir) / shot
+            if src.is_file():
+                shutil.copy2(src, pkg_dir / "screenshots" / src.name)
+        if store_meta.get("icon"):
+            icon_src = Path(app_dir) / store_meta["icon"]
+            if icon_src.is_file():
+                shutil.copy2(icon_src, pkg_dir / icon_src.name)
+
+        script_path = stage / "store_meta_policy.py"
+        script_path.write_bytes(script)
+        errors_path = stage / "errors.txt"
+        warnings_path = stage / "warnings.txt"
+        subprocess.run([sys.executable, str(script_path), pkg, str(pkg_dir), "-",
+                        str(errors_path), str(warnings_path)], check=False)
+        if warnings_path.is_file():
+            for line in warnings_path.read_text(encoding="utf-8").splitlines():
+                print(f"  ⚠ {line}")
+        if errors_path.is_file():
+            print("ERROR: store metadata does not meet the store policy:", file=sys.stderr)
+            for line in errors_path.read_text(encoding="utf-8").splitlines():
+                print(f"  ✗ {line}", file=sys.stderr)
+            print("\n  Fix the \"store\" section of app-builder.json (and the referenced", file=sys.stderr)
+            print("  images), then run `czdev publish` again. Nothing was uploaded.", file=sys.stderr)
+            sys.exit(1)
+        print("  ✓ store metadata passes the store policy")
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
 
 
 # Directories where a *system* systemd unit runs as root by default (user
@@ -460,6 +542,10 @@ def check_version_newer(meta: dict):
         print(f"  ✓ {meta['version']} is newer than existing {existing_version}")
     else:
         print("  ✓ New package (no existing version found)")
+        print("    NOTE: first releases are reviewed by a human. After the PR is")
+        print("    created, post a short video of the app running on a real device")
+        print("    in the PR comments; a maintainer will merge it after watching.")
+        print("    Later version updates merge automatically.")
 
 
 def compare_versions(a: str, b: str) -> int:
