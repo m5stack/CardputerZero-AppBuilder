@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -341,6 +342,11 @@ def build_merged_meta(store_meta: dict, deb_meta: dict, user) -> dict:
         display_name = deb_meta["maintainer"].split("<")[0].strip()
         merged_author["display_name"] = display_name or user.login
     merged["author"] = merged_author
+    # Publish timestamps: the registry renders these; without them it falls
+    # back to overrides or the registry build time, both wrong for updates.
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    merged.setdefault("published_at", now)
+    merged["updated_at"] = now
     return merged
 
 
