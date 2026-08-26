@@ -92,7 +92,8 @@ def run(deb: Optional[str] = None):
     #    the store's own policy script BEFORE uploading anything, so a
     #    submission the CI would reject fails right here with the same wording.
     meta_out = build_merged_meta(store_meta, meta, user)
-    precheck_store_meta(meta_out, app_dir, store_meta, meta["package"])
+    precheck_store_meta(meta_out, app_dir, store_meta, meta["package"],
+                        deb_maintainer=meta.get("maintainer", ""))
 
     # Determine target: direct push or fork
     perm = gh.check_permission(TARGET_OWNER, TARGET_REPO)
@@ -350,7 +351,8 @@ def build_merged_meta(store_meta: dict, deb_meta: dict, user) -> dict:
     return merged
 
 
-def precheck_store_meta(meta_out: dict, app_dir: str, store_meta: dict, pkg: str):
+def precheck_store_meta(meta_out: dict, app_dir: str, store_meta: dict, pkg: str,
+                        deb_maintainer: str = ""):
     """Run the store's own metadata policy locally before uploading anything.
 
     Uses the exact script CI runs (fetched from the packages repo), staged
@@ -382,8 +384,11 @@ def precheck_store_meta(meta_out: dict, app_dir: str, store_meta: dict, pkg: str
         script_path.write_bytes(script)
         errors_path = stage / "errors.txt"
         warnings_path = stage / "warnings.txt"
+        env = dict(os.environ)
+        if deb_maintainer:
+            env["DEB_MAINTAINER"] = deb_maintainer
         subprocess.run([sys.executable, str(script_path), pkg, str(pkg_dir), "-",
-                        str(errors_path), str(warnings_path)], check=False)
+                        str(errors_path), str(warnings_path)], check=False, env=env)
         if warnings_path.is_file():
             for line in warnings_path.read_text(encoding="utf-8").splitlines():
                 print(f"  ⚠ {line}")

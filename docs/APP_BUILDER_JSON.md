@@ -81,7 +81,7 @@ uploaded):
 | `store.icon` | **yes** | string | square PNG path, 128–512 px (256 recommended) |
 | `store.license` | **yes** | string | SPDX id, e.g. `MIT` |
 | `store.source_repo` | recommended | string | public source URL (http/https) |
-| `store.author` | **yes** | object | `{ "github": "you", "display_name": "Your Name" }` — `display_name` is what the store shows |
+| `store.author` | **yes** | object | `{ "github": "alice", "display_name": "Alice Chen" }` — `display_name` is what the store shows |
 | `store.share_code` | **yes** | string | 4 letters/digits, unique across the store; users type it to jump to your app |
 | `store.permissions` | **yes** | object | exactly 7 booleans: `camera`, `microphone`, `imu`, `network`, `additional_hardware`, `background_service`, `external_display` |
 | `store.locales` | recommended | object | localized `title` / `summary` per locale (`zh-CN`, `ja`, …) |
@@ -92,6 +92,13 @@ Categories enum: `System Tools`, `Development`, `Hardware & IoT`, `Security`,
 
 The store title comes from the top-level `app_name` and must be unique across
 the store (case- and whitespace-insensitive).
+
+**Unedited template placeholders are auto-rejected.** Fields still starting
+with `TODO`, an author of `M5Stack` / `Your Name`, a `share_code` of
+`TEMP`/`TODO`, a `source_repo` pointing at the Template repo, and a .deb
+whose `Maintainer` is still the template default (fix `APP_MAINTAINER` in
+`cmake/cm0-package.cmake`, then rebuild) all fail validation — replace every
+one of them with your app's real information.
 
 When updating a published app, fields you leave out keep their published
 values (`czdev publish` merges into the existing `meta.json` — the pinned
